@@ -88,7 +88,7 @@
   - **Commit:** `chore(inference): criar requirements.txt e verificar ambiente CUDA`
   - **Evidência:** `torch.cuda.is_available()` retorna `True`
 
-- [ ] **T09** — Implementar `config.py`
+- [x] **T09** — Implementar `config.py`
   - Arquivo: `apps/inference/config.py`
   - Variáveis: `MODEL_PATH`, `MQTT_HOST`, `MQTT_PORT`, `MQTT_TOPIC`, `CAMERA_ID`,
     `LOCALIZACAO`, `CONFIDENCE_THRESHOLD = 0.4`, `CLASSES = ['saco_lixo','garrafa_pet','papelao','lixo_generico']`

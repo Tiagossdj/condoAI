@@ -38,6 +38,14 @@ export const ScanResponseSchema = z.object({
   timestamp: z.string(),
 })
 
+// Resposta do GET /estatisticas (spec 7.1)
+export const EstatisticasSchema = z.object({
+  total: z.number().int().min(0),
+  ultimo_id: z.number().int().nullable(),
+  por_classe: z.array(z.object({ classe: ClasseNomeSchema, total: z.number().int().min(0) })),
+})
+
+export type Estatisticas = z.infer<typeof EstatisticasSchema>
 export type ClasseNome = z.infer<typeof ClasseNomeSchema>
 export type ScanResponse = z.infer<typeof ScanResponseSchema>
 export type Camera = z.infer<typeof CameraSchema>
@@ -88,6 +96,10 @@ export function getCameras(): Promise<Camera[]> {
 
 export function getClasses(): Promise<Classe[]> {
   return request('/classes', z.array(ClasseSchema))
+}
+
+export function getEstatisticas(): Promise<Estatisticas> {
+  return request('/estatisticas', EstatisticasSchema)
 }
 
 const ErrorBodySchema = z.object({ error: z.string() })

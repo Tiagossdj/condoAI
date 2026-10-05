@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 
 // Formato do evento WebSocket emitido pelo backend (spec 7.2)
@@ -28,9 +28,16 @@ export function wsUrl(): string {
 
 const RECONNECT_DELAY_MS = 3000
 
-export function useWebSocket(url?: string) {
+// onMessage é chamado para cada evento: lastMessage sozinho perderia eventos
+// que chegam no mesmo ciclo de renderização (o React agrupa os setState)
+export function useWebSocket(url?: string, onMessage?: (event: WsDeteccaoEvent) => void) {
   const [lastMessage, setLastMessage] = useState<WsDeteccaoEvent | null>(null)
   const [connected, setConnected] = useState(false)
+  const onMessageRef = useRef(onMessage)
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  })
 
   useEffect(() => {
     let socket: WebSocket | null = null
@@ -57,6 +64,7 @@ export function useWebSocket(url?: string) {
           return
         }
         setLastMessage(parsed.data)
+        onMessageRef.current?.(parsed.data)
       }
 
       // Reconexão automática se o backend cair (RNF08)

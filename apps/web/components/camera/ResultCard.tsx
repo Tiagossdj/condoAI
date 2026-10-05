@@ -1,15 +1,9 @@
-import { AlertCircle, Loader2, SearchX } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, ArrowRight, Loader2, SearchX } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import type { ClasseNome, ScanResponse } from "@/lib/api";
-
-// Descrições das 4 classes (spec 3.2)
-const DESCRICOES: Record<ClasseNome, string> = {
-  saco_lixo: "Saco plástico de lixo",
-  garrafa_pet: "Garrafa PET",
-  papelao: "Caixas de papelão",
-  lixo_generico: "Outros resíduos não classificados",
-};
+import type { ScanResponse } from "@/lib/api";
+import { DESCRICOES } from "@/lib/classes";
 
 type ResultCardProps =
   | { state: "loading" }
@@ -78,9 +72,18 @@ export function ResultCard(props: ResultCardProps) {
         </div>
       </div>
 
-      <p className="mt-6 font-mono text-xs text-muted-foreground">
-        {horario} · {latencia_ms} ms
-      </p>
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <p className="font-mono text-xs text-muted-foreground">
+          {horario} · {latencia_ms} ms
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex shrink-0 items-center gap-1 text-sm text-accent-warm underline-offset-4 hover:underline"
+        >
+          Ver no painel
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
     </Card>
   );
 }

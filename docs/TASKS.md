@@ -157,7 +157,7 @@
   - **Commit:** `feat(web): implementar captura de câmera e envio para inferência`
   - **Evidência:** capturar frame no celular; `ResultCard` exibe classe e confiança
 
-- [ ] **T18** — Implementar Dashboard (`/dashboard`)
+- [x] **T18** — Implementar Dashboard (`/dashboard`)
   - `StatsBar.tsx`: contagem por classe (atualiza via WebSocket)
   - `DetectionFeed.tsx`: lista rolável de detecções em tempo real
   - Conectar `useWebSocket`; atualizar lista ao receber evento `deteccao`

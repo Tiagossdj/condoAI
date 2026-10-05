@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function ScanPage() {
   return (
     <>
-      <Nav variant="back" />
+      <Nav page="scan" />
       <main className="mx-auto w-full max-w-xl px-5 pt-24 pb-16 sm:px-8 sm:pt-28">
         <h1 className="text-3xl font-medium tracking-tight text-balance sm:text-4xl">
           Aponte para o <Accent>resíduo</Accent>.

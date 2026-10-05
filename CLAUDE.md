@@ -167,6 +167,7 @@ Não crie pastas fora dessa estrutura sem aprovação.
 |---|---|
 | Backend Fastify | `3001` |
 | Frontend Next.js | `3000` |
+| Serviço de inferência HTTP (FastAPI) | `8000` |
 | PostgreSQL | `5432` |
 | Broker MQTT Mosquitto | `1883` |
 | Broker MQTT Mosquitto (WebSocket) | `9001` |

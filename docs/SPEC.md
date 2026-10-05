@@ -264,6 +264,39 @@ de inferência aplica um cooldown por classe: após publicar uma detecção
 de uma classe, ignora novas detecções dessa mesma classe por N segundos.
 Padrão: 5 s, ajustável pelo argumento `--cooldown` de `main.py`.
 
+### 4.5 Serviço de inferência HTTP (`POST /predict`)
+
+Além do loop contínuo (`main.py`, que publica no MQTT), o serviço de
+inferência expõe um modo HTTP (`server.py`, FastAPI + uvicorn, porta
+`8000`) usado pelo endpoint `POST /scan` do backend (seção 8.4). Os dois
+modos coexistem e reutilizam o mesmo `Detector` de `model.py`.
+
+O modelo é carregado **uma vez** na inicialização e mantido em memória;
+chamar o `main.py` via subprocess recarregaria o modelo a cada requisição
+(~2–5 s de overhead).
+
+```
+POST http://localhost:8000/predict      (INFERENCE_URL no backend)
+Content-Type: multipart/form-data
+
+frame: <imagem JPEG/PNG>
+```
+
+```json
+{
+  "deteccoes": [
+    { "classe": "saco_lixo", "confianca": 0.847, "bbox": [48.6, 398.6, 245.3, 902.7] }
+  ],
+  "inferencia_ms": 41
+}
+```
+
+- `deteccoes` já vem filtrada pelo threshold (4.3) e pelo filtro de
+  classes por índice e nome (seção 5); lista vazia quando nada é detectado
+- `bbox`: `[x1, y1, x2, y2]` em pixels da imagem recebida
+- Imagem ilegível → `400 { "error": "imagem inválida" }`
+- O frame existe apenas em memória durante a requisição; nunca é salvo
+
 ---
 
 ## 5. LGPD e privacidade
@@ -435,11 +468,17 @@ os clientes conectados.
 #### Tela 2 — Captura (`/scan`)
 
 - Acessa câmera do dispositivo via `getUserMedia`
+- Fallback: `getUserMedia` só existe em contexto seguro (HTTPS ou
+  `localhost`). Acessando pela LAN via HTTP (ex.: celular em
+  `http://192.168.x.x:3000`), a tela oferece
+  `<input type="file" accept="image/*" capture="environment">`, que abre
+  a câmera nativa do dispositivo; o restante do fluxo é idêntico
 - Botão "Capturar" tira foto
 - Frame é enviado via `POST /scan` ao backend (endpoint de upload)
 - Backend passa o frame ao serviço de inferência
 - Resultado retorna com classe, confiança e bounding box
-- `ResultCard` exibe: classe detectada, confiança (%), timestamp
+- `ResultCard` exibe: classe detectada, confiança (%), timestamp;
+  ou "nenhum resíduo detectado" quando `classe` é `null` (seção 8.4)
 
 #### Tela 3 — Dashboard (`/dashboard`)
 
@@ -485,19 +524,35 @@ frame: <arquivo de imagem>
 camera_id: "cam_test"
 ```
 
-O backend recebe, chama o serviço de inferência (via HTTP interno ou
-subprocess), obtém o resultado e retorna:
+O backend recebe o frame, repassa ao serviço de inferência via HTTP
+(`POST /predict`, seção 4.5), fica com a detecção de **maior confiança**
+(top-1) e retorna:
 
 ```json
 {
   "classe": "saco_lixo",
   "confianca": 0.847,
+  "bbox": [48.6, 398.6, 245.3, 902.7],
   "latencia_ms": 312,
   "timestamp": "2026-10-05T14:32:00.000Z"
 }
 ```
 
-Este endpoint também publica no MQTT para aparecer no dashboard.
+**Regras:**
+
+- Nenhuma detecção → `200` com `classe`, `confianca` e `bbox` iguais a
+  `null`; nada é publicado
+- Com detecção, o backend publica um payload no formato da seção 4.2 em
+  `condoai/deteccoes`; o subscriber do próprio backend (seção 7.2)
+  persiste e transmite ao dashboard — caminho único para toda detecção
+- `timestamp`: momento em que a requisição chegou ao backend
+- `latencia_ms`: tempo desde a chegada da requisição até a publicação
+  MQTT (ou até a resposta, quando não há detecção)
+- O cooldown da seção 4.4 não se aplica: cada captura é um pedido
+  explícito do usuário
+- `frame` ausente ou `camera_id` inexistente → `400 { "error": "..." }`
+- Serviço de inferência indisponível → `502 { "error": "..." }`
+- O frame não é salvo em disco em nenhuma das camadas (seção 5)
 
 ---
 

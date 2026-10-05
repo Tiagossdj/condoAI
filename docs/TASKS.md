@@ -142,17 +142,20 @@
   - **Commit:** `feat(web): implementar landing page com CTA para scan`
   - **Evidência:** screenshot mobile e desktop; link "Testar agora" navega para `/scan`
 
+- [ ] **T17** — Implementar endpoint `POST /scan` no backend
+  - Recebe frame (multipart), chama serviço de inferência, publica MQTT, retorna resultado
+  - **Commit:** `feat(backend): adicionar endpoint POST /scan para captura via frontend`
+  - **Evidência:** `curl -F "frame=@test.jpg" -F "camera_id=cam_test" localhost:3001/scan` retorna JSON com classe
+  - Contrato: spec seções 4.5 (`POST /predict`, FastAPI na porta 8000) e 8.4
+  - Executada antes da T16: a tela `/scan` depende deste endpoint
+
 - [ ] **T16** — Implementar `CameraView.tsx` e tela de captura (`/scan`)
+  - Dependência: T17 concluída (endpoint `POST /scan`)
   - `CameraView.tsx`: acessa câmera via `navigator.mediaDevices.getUserMedia`
   - Botão "Capturar" → `canvas.toBlob()` → `POST /scan` no backend
   - Exibe `ResultCard` com resultado
   - **Commit:** `feat(web): implementar captura de câmera e envio para inferência`
   - **Evidência:** capturar frame no celular; `ResultCard` exibe classe e confiança
-
-- [ ] **T17** — Implementar endpoint `POST /scan` no backend
-  - Recebe frame (multipart), chama serviço de inferência, publica MQTT, retorna resultado
-  - **Commit:** `feat(backend): adicionar endpoint POST /scan para captura via frontend`
-  - **Evidência:** `curl -F "frame=@test.jpg" -F "camera_id=cam_test" localhost:3001/scan` retorna JSON com classe
 
 - [ ] **T18** — Implementar Dashboard (`/dashboard`)
   - `StatsBar.tsx`: contagem por classe (atualiza via WebSocket)

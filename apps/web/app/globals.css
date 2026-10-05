@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * Paleta condoAI (spec seção 8.1).
+ * Os nomes seguem o namespace --color-* do Tailwind v4: além das variáveis
+ * CSS com os nomes da spec, geram utilitários como bg-bg-deep,
+ * bg-bg-surface, text-accent-warm e border-accent-light.
+ * "static" emite as 5 variáveis mesmo quando nenhum utilitário as usa.
+ */
+@theme static {
+  --color-bg-deep: #000020;      /* fundo principal */
+  --color-bg-surface: #171a4a;   /* cards, nav */
+  --color-brand: #2f2c79;        /* destaque */
+  --color-accent-warm: #e8c39e;  /* CTAs, destaques quentes */
+  --color-accent-light: #f5e1ce; /* texto secundário, bordas suaves */
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-bg-deep);
+  color: var(--color-accent-light);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

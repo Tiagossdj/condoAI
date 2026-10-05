@@ -122,7 +122,7 @@
 
 > Dependência: T06 e T07 concluídos (backend com WebSocket e MQTT funcionando).
 
-- [ ] **T13** — Inicializar projeto Next.js 15
+- [x] **T13** — Inicializar projeto Next.js 15
   - `apps/web/` com App Router, TypeScript, Tailwind CSS
   - Definir variáveis CSS da paleta (spec seção 8.1) em `app/globals.css`
   - **Commit:** `chore(web): inicializar Next.js 15 com App Router e paleta condoAI`

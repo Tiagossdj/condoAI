@@ -94,7 +94,7 @@
     `LOCALIZACAO`, `CONFIDENCE_THRESHOLD = 0.4`, `CLASSES = ['saco_lixo','garrafa_pet','papelao','lixo_generico']`
   - **Commit:** `feat(inference): adicionar config.py com variáveis de ambiente e constantes`
 
-- [ ] **T10** — Implementar `model.py` (wrapper YOLOv8)
+- [x] **T10** — Implementar `model.py` (wrapper YOLOv8)
   - Arquivo: `apps/inference/model.py`
   - Classe `Detector` com método `predict(frame) -> list[dict]`
   - Filtrar: só retornar detecções com `confianca >= CONFIDENCE_THRESHOLD`

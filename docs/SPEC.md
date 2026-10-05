@@ -388,6 +388,8 @@ Após `model.train()`, o ultralytics gera automaticamente em `runs/detect/train/
 | GET | `/cameras` | Lista câmeras ativas |
 | GET | `/classes` | Lista classes disponíveis |
 | GET | `/health` | Health check do serviço |
+| GET | `/estatisticas` | Total de detecções e contagem por classe |
+| POST | `/scan` | Captura via frontend (seção 8.4) |
 
 **Query params de `/deteccoes`:**
 
@@ -412,6 +414,28 @@ Após `model.train()`, o ultralytics gera automaticamente em `runs/detect/train/
   "next_cursor": "2026-10-05T14:30:00.000Z"
 }
 ```
+
+**Resposta de `/estatisticas`:**
+
+```json
+{
+  "total": 7,
+  "ultimo_id": 42,
+  "por_classe": [
+    { "classe": "saco_lixo",     "total": 5 },
+    { "classe": "garrafa_pet",   "total": 2 },
+    { "classe": "papelao",       "total": 0 },
+    { "classe": "lixo_generico", "total": 0 }
+  ]
+}
+```
+
+As 4 classes aparecem sempre (inclusive com total zero), na ordem da
+seção 3.2. Usada pelo `StatsBar` do dashboard: a paginação de
+`/deteccoes` não permite contar o total a partir do histórico carregado.
+`ultimo_id` é o maior `id` contado (ou `null` sem detecções): o dashboard
+só incrementa a contagem com eventos WebSocket de `id` maior, evitando
+contar duas vezes uma detecção que chegou durante a requisição.
 
 ### 7.2 WebSocket (mesmo servidor, porta 3001)
 
@@ -484,8 +508,11 @@ os clientes conectados.
 
 - Conecta via WebSocket em `ws://localhost:3001/ws`
 - Exibe feed em tempo real de detecções
-- `StatsBar`: contagem por classe
+- `StatsBar`: contagem por classe — total inicial via `GET /estatisticas`,
+  incrementado a cada evento `deteccao` do WebSocket
 - `DetectionFeed`: lista de detecções com timestamp, câmera, classe, confiança
+  — histórico inicial via `GET /deteccoes`, eventos novos no topo,
+  deduplicados por `id`
 
 ### 8.3 Estrutura de pastas (Next.js)
 

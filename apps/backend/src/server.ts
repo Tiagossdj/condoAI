@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import dbPlugin from './plugins/db.js'
+import websocketPlugin from './plugins/websocket.js'
 import healthRoutes from './routes/health.js'
 import camerasRoutes from './routes/cameras.js'
 import classesRoutes from './routes/classes.js'
@@ -13,6 +14,7 @@ export function buildServer() {
   app.setSerializerCompiler(serializerCompiler)
 
   app.register(dbPlugin)
+  app.register(websocketPlugin)
   app.register(healthRoutes)
   app.register(camerasRoutes)
   app.register(classesRoutes)

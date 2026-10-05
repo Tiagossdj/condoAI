@@ -61,7 +61,7 @@
   - **Commit:** `feat(backend): adicionar rotas REST deteccoes, cameras, classes e health`
   - **Evidência:** `curl localhost:3001/health` retorna `{"status":"ok"}`; `curl localhost:3001/deteccoes` retorna `{"data":[],"next_cursor":null}`
 
-- [ ] **T06** — Implementar plugin WebSocket
+- [x] **T06** — Implementar plugin WebSocket
   - Arquivo: `apps/backend/src/plugins/websocket.js`
   - Endpoint `ws://localhost:3001/ws`
   - Emite evento `deteccao` para todos os clientes conectados

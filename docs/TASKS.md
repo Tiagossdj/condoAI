@@ -82,7 +82,7 @@
 > Dependência: T04 concluído (plugin de banco funcionando) e T01 concluído
 > (broker Mosquitto rodando via Docker).
 
-- [ ] **T08** — Configurar ambiente Python e instalar dependências
+- [x] **T08** — Configurar ambiente Python e instalar dependências
   - `apps/inference/requirements.txt`: ultralytics 8.x, paho-mqtt 2.x, opencv-python
   - Verificar CUDA: `python -c "import torch; print(torch.cuda.is_available())"`
   - **Commit:** `chore(inference): criar requirements.txt e verificar ambiente CUDA`

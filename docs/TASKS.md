@@ -45,7 +45,7 @@
   - **Commit:** `chore(backend): inicializar projeto Node.js com dependências`
   - **Evidência:** `node -e "require('./src/server.js')"` não lança erro de import
 
-- [ ] **T04** — Implementar plugin de banco de dados (pool PostgreSQL)
+- [x] **T04** — Implementar plugin de banco de dados (pool PostgreSQL)
   - Arquivo: `apps/backend/src/plugins/db.js`
   - Pool com `connectionString: process.env.DATABASE_URL`; expor `fastify.db`
     via `fastify-plugin`

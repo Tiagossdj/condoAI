@@ -108,7 +108,7 @@
   - Reconexão automática após timeout
   - **Commit:** `feat(mqtt): adicionar publisher MQTT com reconexão automática`
 
-- [ ] **T12** — Implementar `main.py` (loop de captura)
+- [x] **T12** — Implementar `main.py` (loop de captura)
   - Arquivo: `apps/inference/main.py`
   - Loop: captura frame → `Detector.predict()` → monta payload → `MQTTPublisher.publish()`
   - Medir `latencia_ms` desde captura até publicação

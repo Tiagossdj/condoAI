@@ -267,7 +267,10 @@ Implementação:
 
 - `data.yaml` tem exatamente 4 classes (0–3), sem classe de pessoa
 - O serviço de inferência filtra no código: ignora qualquer detecção de
-  classe fora do range 0–3 (defesa contra modelos pré-treinados)
+  classe fora do range 0–3 **ou** cujo nome no modelo (`model.names[id]`)
+  difira de `CLASSES[id]` em `config.py` (defesa contra modelos
+  pré-treinados — no COCO, por exemplo, o índice 0 é `person`, então o
+  filtro só por índice não bastaria)
 - Nenhum frame capturado é salvo em disco
 
 ---

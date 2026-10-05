@@ -30,7 +30,7 @@
 
 > Dependência: T01 concluído (containers Docker rodando).
 
-- [ ] **T02** — Criar schema SQL e seed inicial
+- [x] **T02** — Criar schema SQL e seed inicial
   - Arquivo: `apps/backend/src/db/schema.sql`
   - Tabelas: `cameras`, `classes`, `deteccoes` com índices (spec seção 3.1)
   - Seed: 4 classes + câmera `cam_test` (spec seção 3.3)

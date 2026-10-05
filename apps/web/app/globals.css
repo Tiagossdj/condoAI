@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /*
  * Paleta condoAI (spec seção 8.1).
@@ -15,13 +17,83 @@
   --color-accent-light: #f5e1ce; /* texto secundário, bordas suaves */
 }
 
+/*
+ * Tokens do shadcn/ui ligados à paleta. O site tem tema único (escuro),
+ * por isso não há bloco .dark.
+ */
+:root {
+  --radius: 0.75rem;
+  --background: var(--color-bg-deep);
+  --foreground: var(--color-accent-light);
+  --card: var(--color-bg-surface);
+  --card-foreground: var(--color-accent-light);
+  --popover: var(--color-bg-surface);
+  --popover-foreground: var(--color-accent-light);
+  --primary: var(--color-accent-warm);
+  --primary-foreground: var(--color-bg-deep);
+  --secondary: var(--color-brand);
+  --secondary-foreground: var(--color-accent-light);
+  --muted: var(--color-bg-surface);
+  --muted-foreground: color-mix(in oklab, var(--color-accent-light) 65%, transparent);
+  --accent: var(--color-brand);
+  --accent-foreground: var(--color-accent-light);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: color-mix(in oklab, var(--color-accent-light) 10%, transparent);
+  --input: color-mix(in oklab, var(--color-accent-light) 15%, transparent);
+  --ring: var(--color-accent-warm);
+  --chart-1: var(--color-accent-warm);
+  --chart-2: var(--color-accent-light);
+  --chart-3: var(--color-brand);
+  --chart-4: #8b87d6;
+  --chart-5: #5b5fa8;
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
+  --font-heading: var(--font-geist-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-body {
-  background: var(--color-bg-deep);
-  color: var(--color-accent-light);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans scroll-smooth;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

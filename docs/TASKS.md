@@ -135,7 +135,7 @@
     e retorna `{ lastMessage, connected }`
   - **Commit:** `feat(web): adicionar utilitários de API REST e hook WebSocket`
 
-- [ ] **T15** — Implementar Landing page (`/`)
+- [x] **T15** — Implementar Landing page (`/`)
   - Componentes: nome condoAI, descrição, origem (TCC UNIP 2026), funcionalidade, CTA "Testar agora"
   - Link do CTA aponta para `/scan`
   - Responsivo, mobile-first, paleta da spec

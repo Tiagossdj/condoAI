@@ -102,7 +102,7 @@
   - **Commit:** `feat(inference): adicionar wrapper YOLOv8 com filtro de confiança e classes`
   - **Evidência:** `python -c "from model import Detector; d=Detector(); print('ok')"` sem erro
 
-- [ ] **T11** — Implementar `mqtt_client.py`
+- [x] **T11** — Implementar `mqtt_client.py`
   - Arquivo: `apps/inference/mqtt_client.py`
   - Classe `MQTTPublisher` com método `publish(payload: dict)`
   - Reconexão automática após timeout

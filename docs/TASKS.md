@@ -14,7 +14,7 @@
   - **Commit:** `chore(spec): inicializar estrutura do monorepo condoAI`
   - **Evidência:** `git log --oneline` mostra o commit; `ls apps/` lista as 3 pastas
 
-- [ ] **T01** — Criar `docker-compose.yml` com PostgreSQL e Mosquitto
+- [x] **T01** — Criar `docker-compose.yml` com PostgreSQL e Mosquitto
   - Arquivo: `docker-compose.yml` na raiz do monorepo (spec seção 2.4)
   - Serviço `postgres`: imagem `postgres:16-alpine`, porta `5432`
   - Serviço `mosquitto`: imagem `eclipse-mosquitto:2`, portas `1883` e `9001`,

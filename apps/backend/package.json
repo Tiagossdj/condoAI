@@ -13,6 +13,8 @@
     "start": "node --env-file=.env dist/server.js"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/multipart": "^10.1.2",
     "@fastify/type-provider-zod": "^1.0.0",
     "@fastify/websocket": "^11.3.3",
     "fastify": "^5.12.5",

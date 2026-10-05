@@ -1,4 +1,6 @@
 import Fastify from 'fastify'
+import cors from '@fastify/cors'
+import multipart from '@fastify/multipart'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import dbPlugin from './plugins/db.js'
 import websocketPlugin from './plugins/websocket.js'
@@ -7,6 +9,7 @@ import healthRoutes from './routes/health.js'
 import camerasRoutes from './routes/cameras.js'
 import classesRoutes from './routes/classes.js'
 import deteccoesRoutes from './routes/deteccoes.js'
+import scanRoutes from './routes/scan.js'
 
 export function buildServer() {
   const app = Fastify({ logger: true })
@@ -14,6 +17,10 @@ export function buildServer() {
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
+  // Qualquer origem: sistema local/LAN, aberto ao público, sem cookies nem
+  // autenticação — a origem muda quando o celular acessa pelo IP da LAN
+  app.register(cors, { origin: true })
+  app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 1 } })
   app.register(dbPlugin)
   app.register(websocketPlugin)
   app.register(mqttPlugin)
@@ -21,6 +28,7 @@ export function buildServer() {
   app.register(camerasRoutes)
   app.register(classesRoutes)
   app.register(deteccoesRoutes)
+  app.register(scanRoutes)
 
   return app
 }

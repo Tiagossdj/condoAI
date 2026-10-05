@@ -23,6 +23,12 @@ type InsertRow = {
   localizacao: string
 }
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    publishDeteccao: (payload: MqttPayload) => Promise<boolean>
+  }
+}
+
 export default fp(
   async function mqttPlugin(fastify: FastifyInstance) {
     const host = process.env.MQTT_HOST ?? 'localhost'
@@ -94,6 +100,22 @@ export default fp(
         latencia_ms: payload.latencia_ms,
       })
     }
+
+    // Usado pelo POST /scan (spec 8.4): a detecção volta por este mesmo
+    // subscriber e segue o caminho único persistência → WebSocket
+    fastify.decorate('publishDeteccao', async (payload: MqttPayload) => {
+      if (!client.connected) {
+        fastify.log.warn('broker MQTT indisponível; detecção do /scan não publicada')
+        return false
+      }
+      try {
+        await client.publishAsync(TOPIC, JSON.stringify(payload), { qos: 1 })
+        return true
+      } catch (err) {
+        fastify.log.error({ err }, 'falha ao publicar detecção no MQTT')
+        return false
+      }
+    })
 
     fastify.addHook('onClose', async () => {
       await client.endAsync()

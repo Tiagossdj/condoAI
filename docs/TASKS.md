@@ -142,7 +142,7 @@
   - **Commit:** `feat(web): implementar landing page com CTA para scan`
   - **Evidência:** screenshot mobile e desktop; link "Testar agora" navega para `/scan`
 
-- [ ] **T17** — Implementar endpoint `POST /scan` no backend
+- [x] **T17** — Implementar endpoint `POST /scan` no backend
   - Recebe frame (multipart), chama serviço de inferência, publica MQTT, retorna resultado
   - **Commit:** `feat(backend): adicionar endpoint POST /scan para captura via frontend`
   - **Evidência:** `curl -F "frame=@test.jpg" -F "camera_id=cam_test" localhost:3001/scan` retorna JSON com classe

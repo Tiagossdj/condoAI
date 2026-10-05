@@ -56,3 +56,26 @@ export const MqttPayloadSchema = z.object({
 })
 
 export type MqttPayload = z.infer<typeof MqttPayloadSchema>
+
+const BboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()])
+
+// Resposta do serviço de inferência (spec 4.5)
+export const PredictResponseSchema = z.object({
+  deteccoes: z.array(
+    z.object({
+      classe: ClasseNomeSchema,
+      confianca: z.number().min(0).max(1),
+      bbox: BboxSchema,
+    }),
+  ),
+  inferencia_ms: z.number().int().min(0),
+})
+
+// Resposta do POST /scan (spec 8.4): top-1, campos null sem detecção
+export const ScanResponseSchema = z.object({
+  classe: ClasseNomeSchema.nullable(),
+  confianca: z.number().min(0).max(1).nullable(),
+  bbox: BboxSchema.nullable(),
+  latencia_ms: z.number().int().min(0),
+  timestamp: z.string(),
+})

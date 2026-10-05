@@ -128,7 +128,7 @@
   - **Commit:** `chore(web): inicializar Next.js 15 com App Router e paleta condoAI`
   - **Evidência:** `npm run dev` serve em `localhost:3000` sem erro
 
-- [ ] **T14** — Implementar `lib/api.ts` e `lib/websocket.ts`
+- [x] **T14** — Implementar `lib/api.ts` e `lib/websocket.ts`
   - `api.ts`: funções fetch para `/deteccoes`, `/cameras`, `/classes`; respostas
     validadas em runtime com Zod (spec seção 2.5), schemas espelhando o backend
   - `websocket.ts`: hook `useWebSocket` que conecta em `ws://localhost:3001/ws`

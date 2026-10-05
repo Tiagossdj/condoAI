@@ -143,7 +143,7 @@ Não crie pastas fora dessa estrutura sem aprovação.
 
 | Tecnologia | Versão | Motivo |
 |---|---|---|
-| Python | 3.11 | compatibilidade CUDA 11.8 + YOLOv8 |
+| Python | 3.12 | compatibilidade CUDA 11.8 (wheels torch cu118) + YOLOv8 |
 | ultralytics | 8.x | YOLOv8 — versão do TCC |
 | Node.js | 24 LTS | LTS ativo; testado pelo Fastify v5 (Node 20 em EOL desde abr/2026) |
 | Fastify | 5.x | suporte a async nativo |

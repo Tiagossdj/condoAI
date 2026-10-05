@@ -68,7 +68,7 @@
   - **Commit:** `feat(backend): adicionar plugin WebSocket para broadcast de detecções`
   - **Evidência:** conectar `wscat -c ws://localhost:3001/ws` e receber mensagem de teste
 
-- [ ] **T07** — Implementar plugin MQTT (subscriber)
+- [x] **T07** — Implementar plugin MQTT (subscriber)
   - Arquivo: `apps/backend/src/plugins/mqtt.js`
   - Subscribe em `condoai/deteccoes`; valida payload com Zod (spec seção 2.5);
     ao receber: persiste no banco + broadcast WebSocket

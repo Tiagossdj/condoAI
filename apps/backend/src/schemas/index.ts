@@ -43,3 +43,16 @@ export const HealthResponseSchema = z.object({
 export const ErrorResponseSchema = z.object({
   error: z.string(),
 })
+
+export const ClasseNomeSchema = z.enum(['saco_lixo', 'garrafa_pet', 'papelao', 'lixo_generico'])
+
+export const MqttPayloadSchema = z.object({
+  timestamp: z.iso.datetime({ offset: true }),
+  camera_id: z.string().min(1).max(50),
+  classe: ClasseNomeSchema,
+  confianca: z.number().min(0).max(1),
+  localizacao: z.string(),
+  latencia_ms: z.number().int().min(0),
+})
+
+export type MqttPayload = z.infer<typeof MqttPayloadSchema>

@@ -138,6 +138,19 @@ Zod 4.x é a camada de validação em todas as fronteiras do sistema.
 Versão fixada: zod 4.x, `@fastify/type-provider-zod` 1.x (exige
 zod >=4.2.0 e fastify ^5.5.0 — única versão publicada no momento).
 
+### 2.6 Linguagem e sistema de módulos
+
+- **Linguagem:** TypeScript (strict mode) no backend (Node.js) e no
+  frontend (Next.js). O serviço de inferência permanece em Python.
+- **Sistema de módulos:** ESM (ESNext) — `import`/`export` em todo o
+  código JavaScript/TypeScript. `require`/`module.exports` não são
+  usados em nenhum lugar do projeto.
+- **Extensão dos arquivos:** `.ts` no backend (`apps/backend/src/**/*.ts`),
+  `.tsx` nos componentes React do frontend (`apps/web/**/*.tsx`).
+
+Versão fixada: typescript 7.x, tsx 4.x (execução direta em dev, sem
+build), @types/node 20.x (alinhado ao Node.js 20 LTS).
+
 ---
 
 ## 3. Modelo de dados

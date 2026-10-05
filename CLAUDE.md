@@ -108,6 +108,14 @@ Antes de escrever código que usa Next.js App Router ou Fastify, consulte
 o Context7 para garantir que a API usada é da versão correta. As versões
 estão fixadas na seção "Versões" abaixo.
 
+### 8. TypeScript e ESM obrigatórios (backend e frontend)
+
+Todo código Node.js (backend) e React (frontend) é escrito em
+TypeScript strict, usando exclusivamente ESM (`import`/`export`).
+Nunca usar `require`/`module.exports`. Arquivos `.ts` no backend,
+`.tsx` nos componentes React do frontend. O serviço de inferência
+continua em Python (não se aplica).
+
 ---
 
 ## Estrutura do repositório
@@ -145,6 +153,9 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | mqtt (npm) | 5.x | cliente MQTT Node.js |
 | zod | 4.x | validação de schema em todas as fronteiras |
 | @fastify/type-provider-zod | 1.x | integração Zod + Fastify (exige zod >=4.2.0) |
+| TypeScript | 7.x | linguagem fixa do backend e frontend (strict mode) |
+| tsx | 4.x | execução direta de TypeScript em dev (sem build) |
+| @types/node | 20.x | tipos alinhados ao Node.js 20 LTS |
 | Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |
 
 ---

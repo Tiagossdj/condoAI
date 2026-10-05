@@ -38,7 +38,7 @@
   - **Evidência:** `docker compose exec postgres psql -U condoai -d condoai -c "\dt"`
     mostra as 3 tabelas; SELECT nas classes retorna 4 linhas
 
-- [ ] **T03** — Inicializar projeto Node.js e instalar dependências do backend
+- [x] **T03** — Inicializar projeto Node.js e instalar dependências do backend
   - `apps/backend/package.json` com fastify 5.x, @fastify/websocket, pg, mqtt 5.x,
     zod 4.x, @fastify/type-provider-zod 1.x (spec seção 2.5)
   - `apps/backend/.env.example` com variáveis: `DATABASE_URL`, `MQTT_HOST`, `MQTT_PORT`, `PORT`

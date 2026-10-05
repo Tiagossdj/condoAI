@@ -40,7 +40,7 @@
 
 - [ ] **T03** — Inicializar projeto Node.js e instalar dependências do backend
   - `apps/backend/package.json` com fastify 5.x, @fastify/websocket, pg, mqtt 5.x,
-    zod 3.x, @fastify/type-provider-zod (spec seção 2.5)
+    zod 4.x, @fastify/type-provider-zod 1.x (spec seção 2.5)
   - `apps/backend/.env.example` com variáveis: `DATABASE_URL`, `MQTT_HOST`, `MQTT_PORT`, `PORT`
   - **Commit:** `chore(backend): inicializar projeto Node.js com dependências`
   - **Evidência:** `node -e "require('./src/server.js')"` não lança erro de import

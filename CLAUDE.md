@@ -143,8 +143,8 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | PostgreSQL | 16.x | versão atual |
 | paho-mqtt | 2.x | cliente MQTT Python |
 | mqtt (npm) | 5.x | cliente MQTT Node.js |
-| zod | 3.x | validação de schema em todas as fronteiras |
-| @fastify/type-provider-zod | compatível com Fastify 5.x | integração Zod + Fastify |
+| zod | 4.x | validação de schema em todas as fronteiras |
+| @fastify/type-provider-zod | 1.x | integração Zod + Fastify (exige zod >=4.2.0) |
 | Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |
 
 ---

@@ -123,7 +123,7 @@ POSTGRES_DB=condoai
 
 ### 2.5 Validação de schema (Zod)
 
-Zod 3.x é a camada de validação em todas as fronteiras do sistema.
+Zod 4.x é a camada de validação em todas as fronteiras do sistema.
 
 **Backend (Fastify):**
 - Integração via `fastify-type-provider-zod`
@@ -135,8 +135,8 @@ Zod 3.x é a camada de validação em todas as fronteiras do sistema.
 - Respostas da API validadas em runtime com Zod em `apps/web/lib/api.ts`
 - Schemas de resposta espelham os schemas do backend
 
-Versão fixada: zod 3.x, `@fastify/type-provider-zod` (versão compatível
-com Fastify 5.x — consultar Context7 antes de instalar).
+Versão fixada: zod 4.x, `@fastify/type-provider-zod` 1.x (exige
+zod >=4.2.0 e fastify ^5.5.0 — única versão publicada no momento).
 
 ---
 

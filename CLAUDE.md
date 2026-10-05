@@ -115,6 +115,8 @@ estão fixadas na seção "Versões" abaixo.
 ```
 condoai/
 ├── CLAUDE.md               ← você está aqui (leia antes de tudo)
+├── docker-compose.yml      ← PostgreSQL + Mosquitto (dev local)
+├── .env.example            ← POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
 ├── apps/
 │   ├── inference/          ← Python: YOLOv8 + MQTT publisher
 │   ├── backend/            ← Node.js: Fastify + PostgreSQL + WebSocket
@@ -141,6 +143,9 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | PostgreSQL | 16.x | versão atual |
 | paho-mqtt | 2.x | cliente MQTT Python |
 | mqtt (npm) | 5.x | cliente MQTT Node.js |
+| zod | 3.x | validação de schema em todas as fronteiras |
+| @fastify/type-provider-zod | compatível com Fastify 5.x | integração Zod + Fastify |
+| Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |
 
 ---
 
@@ -150,7 +155,9 @@ Não crie pastas fora dessa estrutura sem aprovação.
 |---|---|
 | Backend Fastify | `3001` |
 | Frontend Next.js | `3000` |
+| PostgreSQL | `5432` |
 | Broker MQTT Mosquitto | `1883` |
+| Broker MQTT Mosquitto (WebSocket) | `9001` |
 | Tópico MQTT | `condoai/deteccoes` |
 
 ---

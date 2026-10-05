@@ -94,6 +94,52 @@ ser substituída ou escalada independentemente.
 
 ---
 
+### 2.4 Infraestrutura local (desenvolvimento)
+
+PostgreSQL 16 e Mosquitto rodam via Docker Compose. O arquivo
+`docker-compose.yml` fica na raiz do monorepo.
+
+**Serviços:**
+
+| Serviço | Imagem | Portas |
+|---|---|---|
+| postgres | `postgres:16-alpine` | `5432` |
+| mosquitto | `eclipse-mosquitto:2` | `1883` (MQTT), `9001` (WebSocket) |
+
+O Mosquitto requer um `mosquitto.conf` montado no container — a imagem
+oficial não expõe nenhuma porta sem configuração explícita.
+
+**Variáveis de ambiente (arquivo `.env` na raiz, nunca commitado):**
+
+```env
+POSTGRES_USER=condoai
+POSTGRES_PASSWORD=<definir localmente>
+POSTGRES_DB=condoai
+```
+
+> O backend **não** lê essas variáveis `POSTGRES_*` diretamente. Ele usa
+> `DATABASE_URL` (string de conexão completa para node-postgres) no seu
+> próprio `apps/backend/.env` — ver seção 2.5 e seção 7.
+
+### 2.5 Validação de schema (Zod)
+
+Zod 3.x é a camada de validação em todas as fronteiras do sistema.
+
+**Backend (Fastify):**
+- Integração via `fastify-type-provider-zod`
+- Schemas Zod definidos junto às rotas em `apps/backend/src/routes/`
+- Payload MQTT validado com Zod antes de persistir no banco
+- Arquivo de schemas compartilhados: `apps/backend/src/schemas/index.ts`
+
+**Frontend (Next.js):**
+- Respostas da API validadas em runtime com Zod em `apps/web/lib/api.ts`
+- Schemas de resposta espelham os schemas do backend
+
+Versão fixada: zod 3.x, `@fastify/type-provider-zod` (versão compatível
+com Fastify 5.x — consultar Context7 antes de instalar).
+
+---
+
 ## 3. Modelo de dados
 
 ### 3.1 Tabelas

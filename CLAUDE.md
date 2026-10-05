@@ -153,7 +153,8 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | mqtt (npm) | 5.x | cliente MQTT Node.js |
 | zod | 4.x | validação de schema em todas as fronteiras |
 | @fastify/type-provider-zod | 1.x | integração Zod + Fastify (exige zod >=4.2.0) |
-| TypeScript | 7.x | linguagem fixa do backend e frontend (strict mode) |
+| TypeScript (backend) | 7.x | linguagem fixa do backend (strict mode) |
+| TypeScript (frontend) | 5.9.x | Next.js 15 exige a API JS clássica do pacote `typescript`, ausente no 7.x (strict mode) |
 | tsx | 4.x | execução direta de TypeScript em dev (sem build) |
 | @types/node | 24.x | tipos alinhados ao Node.js 24 LTS |
 | Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |

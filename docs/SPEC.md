@@ -148,7 +148,9 @@ zod >=4.2.0 e fastify ^5.5.0 — única versão publicada no momento).
 - **Extensão dos arquivos:** `.ts` no backend (`apps/backend/src/**/*.ts`),
   `.tsx` nos componentes React do frontend (`apps/web/**/*.tsx`).
 
-Versão fixada: typescript 7.x, tsx 4.x (execução direta em dev, sem
+Versão fixada: typescript 7.x no backend e 5.9.x no frontend (o Next.js 15
+usa a API JS clássica do pacote `typescript` para checar tipos no build,
+ausente no 7.x), tsx 4.x (execução direta em dev, sem
 build), @types/node 24.x (alinhado ao Node.js 24 LTS).
 
 ---

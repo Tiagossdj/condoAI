@@ -19,11 +19,16 @@ export const WsDeteccaoEventSchema = z.object({
 
 export type WsDeteccaoEvent = z.infer<typeof WsDeteccaoEventSchema>
 
-export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:3001/ws'
+// Sem NEXT_PUBLIC_WS_URL, usa o mesmo host da página na porta 3001 (ver api.ts)
+export function wsUrl(): string {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
+  if (typeof window !== 'undefined') return `ws://${window.location.hostname}:3001/ws`
+  return 'ws://localhost:3001/ws'
+}
 
 const RECONNECT_DELAY_MS = 3000
 
-export function useWebSocket(url: string = WS_URL) {
+export function useWebSocket(url?: string) {
   const [lastMessage, setLastMessage] = useState<WsDeteccaoEvent | null>(null)
   const [connected, setConnected] = useState(false)
 
@@ -33,7 +38,7 @@ export function useWebSocket(url: string = WS_URL) {
     let closed = false
 
     function connect() {
-      socket = new WebSocket(url)
+      socket = new WebSocket(url ?? wsUrl())
 
       socket.onopen = () => setConnected(true)
 

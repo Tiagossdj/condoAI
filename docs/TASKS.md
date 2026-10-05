@@ -149,7 +149,7 @@
   - Contrato: spec seções 4.5 (`POST /predict`, FastAPI na porta 8000) e 8.4
   - Executada antes da T16: a tela `/scan` depende deste endpoint
 
-- [ ] **T16** — Implementar `CameraView.tsx` e tela de captura (`/scan`)
+- [x] **T16** — Implementar `CameraView.tsx` e tela de captura (`/scan`)
   - Dependência: T17 concluída (endpoint `POST /scan`)
   - `CameraView.tsx`: acessa câmera via `navigator.mediaDevices.getUserMedia`
   - Botão "Capturar" → `canvas.toBlob()` → `POST /scan` no backend

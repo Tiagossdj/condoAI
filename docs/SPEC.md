@@ -255,6 +255,13 @@ condoai/deteccoes
 O serviço de inferência **não publica** detecções com `confianca < 0.4`.
 Esse valor está em `config.py` como `CONFIDENCE_THRESHOLD = 0.4`.
 
+### 4.4 Cooldown por classe
+
+Para não publicar a mesma ocorrência a cada frame (~30 fps), o serviço
+de inferência aplica um cooldown por classe: após publicar uma detecção
+de uma classe, ignora novas detecções dessa mesma classe por N segundos.
+Padrão: 5 s, ajustável pelo argumento `--cooldown` de `main.py`.
+
 ---
 
 ## 5. LGPD e privacidade

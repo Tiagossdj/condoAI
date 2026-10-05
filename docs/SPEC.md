@@ -149,7 +149,7 @@ zod >=4.2.0 e fastify ^5.5.0 — única versão publicada no momento).
   `.tsx` nos componentes React do frontend (`apps/web/**/*.tsx`).
 
 Versão fixada: typescript 7.x, tsx 4.x (execução direta em dev, sem
-build), @types/node 20.x (alinhado ao Node.js 20 LTS).
+build), @types/node 24.x (alinhado ao Node.js 24 LTS).
 
 ---
 

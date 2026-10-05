@@ -145,7 +145,7 @@ Não crie pastas fora dessa estrutura sem aprovação.
 |---|---|---|
 | Python | 3.11 | compatibilidade CUDA 11.8 + YOLOv8 |
 | ultralytics | 8.x | YOLOv8 — versão do TCC |
-| Node.js | 20 LTS | versão estável atual |
+| Node.js | 24 LTS | LTS ativo; testado pelo Fastify v5 (Node 20 em EOL desde abr/2026) |
 | Fastify | 5.x | suporte a async nativo |
 | Next.js | 15.x | App Router estável |
 | PostgreSQL | 16.x | versão atual |
@@ -155,7 +155,7 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | @fastify/type-provider-zod | 1.x | integração Zod + Fastify (exige zod >=4.2.0) |
 | TypeScript | 7.x | linguagem fixa do backend e frontend (strict mode) |
 | tsx | 4.x | execução direta de TypeScript em dev (sem build) |
-| @types/node | 20.x | tipos alinhados ao Node.js 20 LTS |
+| @types/node | 24.x | tipos alinhados ao Node.js 24 LTS |
 | Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |
 
 ---

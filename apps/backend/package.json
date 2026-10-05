@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/server.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "node --env-file=.env --watch --import tsx src/server.ts",
@@ -22,7 +22,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^24.19.1",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

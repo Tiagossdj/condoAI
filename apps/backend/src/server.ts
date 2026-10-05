@@ -10,6 +10,7 @@ import camerasRoutes from './routes/cameras.js'
 import classesRoutes from './routes/classes.js'
 import deteccoesRoutes from './routes/deteccoes.js'
 import scanRoutes from './routes/scan.js'
+import estatisticasRoutes from './routes/estatisticas.js'
 
 export function buildServer() {
   const app = Fastify({ logger: true })
@@ -29,6 +30,7 @@ export function buildServer() {
   app.register(classesRoutes)
   app.register(deteccoesRoutes)
   app.register(scanRoutes)
+  app.register(estatisticasRoutes)
 
   return app
 }

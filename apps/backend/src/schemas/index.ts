@@ -71,6 +71,18 @@ export const PredictResponseSchema = z.object({
   inferencia_ms: z.number().int().min(0),
 })
 
+// Resposta do GET /estatisticas (spec 7.1)
+export const EstatisticasResponseSchema = z.object({
+  total: z.number().int().min(0),
+  ultimo_id: z.number().int().nullable(),
+  por_classe: z.array(
+    z.object({
+      classe: ClasseNomeSchema,
+      total: z.number().int().min(0),
+    }),
+  ),
+})
+
 // Resposta do POST /scan (spec 8.4): top-1, campos null sem detecção
 export const ScanResponseSchema = z.object({
   classe: ClasseNomeSchema.nullable(),

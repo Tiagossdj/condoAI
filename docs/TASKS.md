@@ -52,7 +52,7 @@
   - **Commit:** `feat(db): adicionar plugin de pool PostgreSQL no backend`
   - **Evidência:** servidor inicia e conecta ao banco sem erro no log
 
-- [ ] **T05** — Implementar rotas REST (`/deteccoes`, `/cameras`, `/classes`, `/health`)
+- [x] **T05** — Implementar rotas REST (`/deteccoes`, `/cameras`, `/classes`, `/health`)
   - Arquivos: `apps/backend/src/routes/deteccoes.js`, `cameras.js`, `classes.js`
   - Schemas Zod em `apps/backend/src/schemas/index.ts` via `fastify-type-provider-zod`
     (spec seção 2.5)

@@ -189,8 +189,9 @@
   - **Evidência:** tabela de latências; verificar se mediana < 3s (H2)
   - **Resultado:** mediana 26,8 ms · P95 34,9 ms · máx 42,2 ms (50 amostras) — H2 confirmada; tabela na spec 1.5
 
-- [ ] **T21** — Teste de integração completo (smoke test)
+- [x] **T21** — Teste de integração completo (smoke test)
   - Iniciar: Docker Compose (Postgres + Mosquitto) + backend + inference + web
   - Capturar via `/scan`; verificar: resultado na tela → linha no banco → feed no dashboard
   - **Commit:** `test(backend): smoke test de integração do pipeline completo`
   - **Evidência:** vídeo ou print screen do fluxo completo funcionando
+  - **Resultado:** `npm run test:smoke` 2/2 (scan → WS → banco → GET /deteccoes); captura manual via webcam: 6 detecções de papelao (conf. 0,48–0,79) no ResultCard e no feed do dashboard sem reload

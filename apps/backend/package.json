@@ -11,7 +11,8 @@
     "dev": "node --env-file=.env --watch --import tsx src/server.ts",
     "build": "tsc",
     "start": "node --env-file=.env dist/server.js",
-    "latencia": "node --import tsx scripts/latencia.ts"
+    "latencia": "node --import tsx scripts/latencia.ts",
+    "test:smoke": "node --env-file=.env --import tsx --test test/smoke.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

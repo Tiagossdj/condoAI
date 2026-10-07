@@ -171,12 +171,16 @@
 
 > Dependência: todas as fases anteriores concluídas.
 
-- [ ] **T19** — Treinar modelo YOLOv8 (exploratório, 50 épocas)
+- [x] **T19** — Treinar modelo YOLOv8 (exploratório, 50 épocas)
   - YOLOv8n ou YOLOv8s, batch=8, device=0
   - Salvar `best.pt` em `apps/inference/models/`
   - Gerar: `results.png`, `confusion_matrix_normalized.png`, `results.csv`
   - **Commit:** `feat(inference): adicionar pesos treinados e artefatos de avaliação`
   - **Evidência:** mAP@50 registrado; comparar com benchmark Aguiar (65,9%)
+  - **Resultado (YOLOv8n, split de teste):** mAP@50 = 47,3% · mAP@50-95 = 41,7% ·
+    P = 55,3% · R = 47,0% — abaixo do benchmark (65,9%)
+    - AP@50 por classe: saco_lixo 9,8% · garrafa_pet 48,2% · papelao 84,5% · lixo_generico 46,8%
+    - `saco_lixo` tem só 167 anotações (vs. ~5000 das maiores) e puxa a média para baixo
 
 - [ ] **T20** — Medir latência do pipeline (validação H2)
   - Medir: captura → inferência → MQTT → backend → WebSocket

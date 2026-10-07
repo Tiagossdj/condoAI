@@ -157,3 +157,6 @@ venv/
 # YOLOv8 / ultralytics
 *.pt
 runs/
+
+# Datasets de treino (export Roboflow, grande demais para o git)
+apps/inference/datasets/

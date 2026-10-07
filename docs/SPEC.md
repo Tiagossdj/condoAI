@@ -394,14 +394,23 @@ neste hardware — preferir n/s na fase exploratória.
 
 ### 6.4 Artefatos gerados pelo treino
 
-Após `model.train()`, o ultralytics gera automaticamente em `runs/detect/train/`:
+Cada versão do modelo (`v1`, `v2`, ...) é treinada com
+`python train.py --versao <versão> --dataset <pasta> --epocas <n>`. O
+ultralytics gera os artefatos em `runs/detect/<versão>/`:
 
 - `results.png` → curvas de loss e mAP por época
 - `confusion_matrix_normalized.png` → matriz de confusão normalizada
 - `results.csv` → métricas por época (usado para gráficos do TCC)
 - `weights/best.pt` → pesos do melhor checkpoint (usar este)
 
-`best.pt` vai para `apps/inference/models/best.pt` (no `.gitignore`).
+Ao final, `train.py` copia esses quatro arquivos para
+`apps/inference/models/<versão>/`. Cada versão guarda também um
+`metricas.md` com dataset, hiperparâmetros e métricas no teste, para
+comparação entre versões no TCC. `best.pt` fica no `.gitignore`; os demais
+artefatos são versionados.
+
+O serviço de inferência carrega `models/<MODEL_VERSION>/best.pt`
+(`MODEL_VERSION` em `config.py`, sobrescrevível por variável de ambiente).
 
 ---
 

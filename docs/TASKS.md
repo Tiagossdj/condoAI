@@ -195,3 +195,34 @@
   - **Commit:** `test(backend): smoke test de integração do pipeline completo`
   - **Evidência:** vídeo ou print screen do fluxo completo funcionando
   - **Resultado:** `npm run test:smoke` 2/2 (scan → WS → banco → GET /deteccoes); captura manual via webcam: 6 detecções de papelao (conf. 0,48–0,79) no ResultCard e no feed do dashboard sem reload
+
+---
+
+## Fase 5 — Aprimoramento do modelo
+
+> Dependência: Fase 4 concluída. Cada versão do modelo fica em
+> `apps/inference/models/<versão>/` com artefatos e `metricas.md` (spec 6.4).
+
+- [ ] **T22** — Treinar modelo v2 com dataset complementado (50 épocas)
+  - Dataset `condoai_v2` (Roboflow `condoai-taco-trashnet-wasteinsight`): saco_lixo
+    de 167 → 776 anotações; remapear classes para a ordem da spec 3.2
+  - Mesma configuração do v1 (YOLOv8n, 50 épocas, batch=8): só o dataset muda,
+    para isolar o efeito do volume de `saco_lixo` no resultado
+  - `python train.py --versao v2 --dataset condoai_v2 --epocas 50`
+  - Gerar `models/v2/metricas.md`; atualizar spec 6.1 com o dataset novo
+  - **Commit:** `feat(inference): adicionar modelo v2 treinado com dataset complementado`
+  - **Evidência:** tabela comparativa v1 × v2 no teste (geral e por classe);
+    comparar com benchmark Aguiar (65,9%)
+
+- [ ] **T23** — Treinar modelo v3 (rodada final, 100 épocas)
+  - Dependência: T22 concluída
+  - Dataset `condoai_v2`, YOLOv8n, 100 épocas (spec 6.2, "Final")
+  - `python train.py --versao v3 --dataset condoai_v2 --epocas 100`
+  - **Commit:** `feat(inference): adicionar modelo v3 com 100 épocas`
+  - **Evidência:** tabela comparativa v1 × v2 × v3 no teste
+
+- [ ] **T24** — Monitoramento contínuo com visualização das detecções
+  - Dependência: T23 concluída (modelo com bounding boxes confiáveis)
+  - Abordagem a definir antes de iniciar: janela local no `main.py`
+    (`--preview`) ou vídeo ao vivo no navegador (altera spec 8.4)
+  - **Evidência:** vídeo com detecções e bounding boxes sobre o objeto

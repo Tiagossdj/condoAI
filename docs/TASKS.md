@@ -182,11 +182,12 @@
     - AP@50 por classe: saco_lixo 9,8% · garrafa_pet 48,2% · papelao 84,5% · lixo_generico 46,8%
     - `saco_lixo` tem só 167 anotações (vs. ~5000 das maiores) e puxa a média para baixo
 
-- [ ] **T20** — Medir latência do pipeline (validação H2)
+- [x] **T20** — Medir latência do pipeline (validação H2)
   - Medir: captura → inferência → MQTT → backend → WebSocket
   - Registrar em tabela: mínimo, mediano, máximo, P95 (mínimo 30 amostras)
   - **Commit:** `docs(spec): registrar resultados de latência medidos`
   - **Evidência:** tabela de latências; verificar se mediana < 3s (H2)
+  - **Resultado:** mediana 26,8 ms · P95 34,9 ms · máx 42,2 ms (50 amostras) — H2 confirmada; tabela na spec 1.5
 
 - [ ] **T21** — Teste de integração completo (smoke test)
   - Iniciar: Docker Compose (Postgres + Mosquitto) + backend + inference + web

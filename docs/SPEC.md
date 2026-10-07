@@ -44,6 +44,34 @@ condominial. Os benchmarks de referência são:
   backend) será inferior a 3 segundos em condições de execução local.
   Estimativa típica: ~233 ms em condições ideais; faixa realista: 86–495 ms.
 
+### 1.5 Latência medida (validação da H2)
+
+Medição em 2026-10-07 com `npm run latencia` (`apps/backend/scripts/latencia.ts`):
+o cliente envia o frame via `POST /scan` e cronometra até receber o evento
+`deteccao` no WebSocket, cobrindo inferência → MQTT → backend → Postgres →
+WebSocket com um único relógio. 50 amostras sequenciais (+3 de aquecimento
+descartadas), frame JPEG 640×640 (25,9 KB) do split de teste com detecção de
+`papelao`, modelo YOLOv8n exploratório (T19).
+
+**Ambiente:** Acer Nitro 5, GTX 1650 (CUDA 11.8), tudo local — Docker
+(PostgreSQL 16 + Mosquitto), backend Fastify (build de produção) e
+inferência FastAPI.
+
+| Trecho (ms) | Mínimo | Mediana | Média | P95 | Máximo |
+|---|---|---|---|---|---|
+| Total: `/scan` → evento WebSocket | 24,1 | **26,8** | 27,9 | 34,9 | 42,2 |
+| Backend: chegada → publicação MQTT (`latencia_ms`) | 20,0 | 22,0 | 23,1 | 28,0 | 31,0 |
+| MQTT → Postgres → WebSocket (+ resposta HTTP) | 2,9 | 4,2 | 4,8 | 8,3 | 14,2 |
+
+**Resultado:** mediana de 26,8 ms e máximo de 42,2 ms — H2 confirmada com
+folga (meta < 3 s), abaixo até da faixa estimada (86–495 ms). O trecho
+dominante é a inferência dentro do backend (~22 ms, incluindo a chamada
+HTTP ao FastAPI); MQTT, persistência e broadcast somam ~4 ms.
+
+**Limitações:** não inclui a captura no navegador (`getUserMedia` →
+`canvas.toBlob`) nem a rede entre celular e servidor, pois tudo roda em
+`localhost`; frames de câmera real tendem a ser maiores que 25,9 KB.
+
 ---
 
 ## 2. Arquitetura

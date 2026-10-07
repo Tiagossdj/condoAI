@@ -6,7 +6,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # Versão do modelo em produção: pesos em models/<versão>/best.pt (spec 6.4)
-MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "v2")
 
 # Variáveis de ambiente (com padrões para desenvolvimento local)
 MODEL_PATH = os.environ.get(

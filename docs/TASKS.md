@@ -203,7 +203,7 @@
 > Dependência: Fase 4 concluída. Cada versão do modelo fica em
 > `apps/inference/models/<versão>/` com artefatos e `metricas.md` (spec 6.4).
 
-- [ ] **T22** — Treinar modelo v2 com dataset complementado (50 épocas)
+- [x] **T22** — Treinar modelo v2 com dataset complementado (50 épocas)
   - Dataset `condoai_v2` (Roboflow `condoai-taco-trashnet-wasteinsight`): saco_lixo
     de 167 → 776 anotações; remapear classes para a ordem da spec 3.2
   - Mesma configuração do v1 (YOLOv8n, 50 épocas, batch=8): só o dataset muda,
@@ -213,6 +213,8 @@
   - **Commit:** `feat(inference): adicionar modelo v2 treinado com dataset complementado`
   - **Evidência:** tabela comparativa v1 × v2 no teste (geral e por classe);
     comparar com benchmark Aguiar (65,9%)
+  - **Resultado:** mAP@50 v1 47,3% → v2 **67,7%** (H1 atingida); saco_lixo 9,8% → 93,0%;
+    demais classes estáveis (±1 p.p.). Detalhes em `models/v2/metricas.md`
 
 - [ ] **T23** — Treinar modelo v3 (rodada final, 100 épocas)
   - Dependência: T22 concluída

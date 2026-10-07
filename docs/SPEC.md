@@ -349,18 +349,25 @@ Implementação:
 
 ### 6.1 Dataset
 
-| Dataset | Imagens | Fonte |
-|---|---|---|
-| TACO | ~1.500 | Roboflow |
-| TrashBox | ~17.785 | Roboflow |
+Os datasets são montados no Roboflow com as classes remapeadas para as 4 da
+seção 3.2. O export do Roboflow ordena as classes alfabeticamente; os IDs
+dos labels precisam ser remapeados para a ordem da spec antes do treino.
 
-**Split:** 70% treino / 15% validação / 15% teste
+| Versão | Projeto Roboflow | Origens | Imagens | saco_lixo |
+|---|---|---|---|---|
+| `condoai` (v1) | `condoai-taco-trashnet` | TACO + TrashNet | 6.797 | 167 anotações |
+| `condoai_v2` (v2+) | `condoai-taco-trashnet-wasteinsight` | TACO + TrashNet + WasteInsight | 7.264 | 776 anotações |
 
-**Data augmentation** (configurado no Roboflow):
-- flip horizontal
+**Split** (imagens de origem): 70% treino / 15% validação / 15% teste
+
+**Pré-processamento** (Roboflow): auto-orient; resize 640×640 (stretch)
+
+**Data augmentation** (Roboflow, só no treino, ×2 por imagem):
+- flip horizontal (50%)
 - rotação ±15°
-- brilho/contraste ±20%
-- mosaic
+- brilho ±15%
+- blur gaussiano 0–1,5 px (só `condoai_v2`)
+- mosaic (aplicado pelo ultralytics durante o treino)
 
 ### 6.2 Treinamento
 

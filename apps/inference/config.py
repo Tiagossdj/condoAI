@@ -5,8 +5,13 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Versão do modelo em produção: pesos em models/<versão>/best.pt (spec 6.4)
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
+
 # Variáveis de ambiente (com padrões para desenvolvimento local)
-MODEL_PATH = os.environ.get("MODEL_PATH", str(BASE_DIR / "models" / "best.pt"))
+MODEL_PATH = os.environ.get(
+    "MODEL_PATH", str(BASE_DIR / "models" / MODEL_VERSION / "best.pt")
+)
 MQTT_HOST = os.environ.get("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 CAMERA_ID = os.environ.get("CAMERA_ID", "cam_test")

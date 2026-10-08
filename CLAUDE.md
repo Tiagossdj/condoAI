@@ -171,7 +171,8 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | PostgreSQL | `5432` |
 | Broker MQTT Mosquitto | `1883` |
 | Broker MQTT Mosquitto (WebSocket) | `9001` |
-| Tópico MQTT | `condoai/deteccoes` |
+| Tópico MQTT (detecções) | `condoai/deteccoes` |
+| Tópico MQTT (sinal de vida das câmeras) | `condoai/status` |
 
 ---
 

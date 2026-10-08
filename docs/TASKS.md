@@ -234,3 +234,44 @@
   - **Resultado:** vídeo de teste (20 imagens do split de teste, 30 s) gravado
     com caixas, rótulos e destaque `MQTT`; ~32 fps, inferência 15–27 ms;
     24 publicações → 24 linhas em `deteccoes` com o backend no ar
+
+## Fase 6 — Monitoramento contínuo em campo
+
+> Dependência: Fase 5 concluída. Objetivo: demonstrar a câmera fixa
+> monitorando um local de forma contínua, sem superlotar o banco
+> (spec 4.4, 4.7 e 11).
+
+- [ ] **T25** — Ocorrências por classe no `main.py` (substitui o cooldown)
+  - Dependência: T24 concluída
+  - Estado `ausente`/`presente` por classe; confirmação após ≥ 1 s contínuo
+    (lacunas ≤ 0,5 s); uma publicação por ocorrência; encerramento após
+    `--ausencia` s sem ver a classe (padrão 30); `--cooldown` removido (spec 4.4)
+  - `--preview`: rótulo com tempo de presença (ex.: `saco_lixo 0.87 · 2m13s`) (spec 4.6)
+  - Sem alteração de schema nem de payload
+  - **Commit:** `feat(inference): registrar ocorrências por classe em vez de detecções periódicas`
+  - **Evidência:** vídeo de teste com um objeto parado por > 1 min gera 1 linha
+    em `deteccoes` (antes: 1 a cada 5 s); objeto que some > 30 s e volta gera 2;
+    falso positivo de poucos frames não gera nenhuma
+
+- [ ] **T26** — Sinal de vida da câmera no dashboard
+  - Dependência: T25 concluída
+  - `main.py`: publica `online` em `condoai/status` a cada 10 s, `offline` ao
+    encerrar; Last Will `offline`; retain; keepalive 15 s (spec 4.7)
+  - Backend: subscribe em `condoai/status` com validação Zod; estado em memória;
+    evento WebSocket `status` + snapshot na conexão (spec 7.2)
+  - Web: componente `CameraStatus` no dashboard; offline após 30 s sem sinal (spec 8.2)
+  - **Commit:** `feat(backend): repassar sinal de vida das câmeras ao dashboard`
+    (um commit por escopo: `inference`, `backend`, `web`)
+  - **Evidência:** dashboard mostra "monitorando" com o `main.py` rodando;
+    "offline" ao fechar com `q`; "offline" ao matar o processo (Last Will)
+
+- [ ] **T27** — Demonstração em campo com câmera IP fixa
+  - Dependência: T26 concluída
+  - Validar stream do DroidCam no `--source` (`http://<ip>:4747/video`)
+  - Rede: hotspot do celular; perfil Privado; regras de firewall para 3000/3001 (spec 11)
+  - Sessão contínua com a câmera fixa na área monitorada e o dashboard aberto
+    em outro aparelho
+  - **Commit:** `docs(spec): registrar resultado da demonstração em campo`
+  - **Evidência:** sessão de ≥ 1 h; ocorrências e estado da câmera no dashboard
+    acessado por outro aparelho; contagem de linhas no banco compatível com os
+    descartes encenados

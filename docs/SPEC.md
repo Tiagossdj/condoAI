@@ -119,6 +119,10 @@ ser substituída ou escalada independentemente.
 - Hardware embarcado / robô
 - Autenticação de usuários
 - Notificações push
+- Tracking por objeto (`model.track` do ultralytics, com ID por objeto):
+  as ocorrências (4.4) são controladas por classe
+- Duração das ocorrências no banco (início e fim persistidos); hoje a
+  duração aparece só no `--preview` (4.6)
 
 ---
 
@@ -252,11 +256,12 @@ INSERT INTO cameras (camera_id, localizacao) VALUES
 
 ## 4. Protocolo MQTT
 
-### 4.1 Tópico
+### 4.1 Tópicos
 
-```
-condoai/deteccoes
-```
+| Tópico | Conteúdo | Publicado por |
+|---|---|---|
+| `condoai/deteccoes` | uma mensagem por ocorrência (4.2 e 4.4) | `main.py` e `POST /scan` (8.4) |
+| `condoai/status` | sinal de vida da câmera (4.7) | `main.py` e broker (Last Will) |
 
 ### 4.2 Payload (JSON)
 
@@ -285,12 +290,31 @@ condoai/deteccoes
 O serviço de inferência **não publica** detecções com `confianca < 0.4`.
 Esse valor está em `config.py` como `CONFIDENCE_THRESHOLD = 0.4`.
 
-### 4.4 Cooldown por classe
+### 4.4 Ocorrência por classe
 
-Para não publicar a mesma ocorrência a cada frame (~30 fps), o serviço
-de inferência aplica um cooldown por classe: após publicar uma detecção
-de uma classe, ignora novas detecções dessa mesma classe por N segundos.
-Padrão: 5 s, ajustável pelo argumento `--cooldown` de `main.py`.
+A câmera fixa vê o mesmo resíduo em todos os frames (~30 fps) enquanto
+ele estiver no local. Publicar por frame, ou a cada N segundos, gravaria
+centenas de linhas para um único descarte. O `main.py` registra
+**ocorrências**: cada classe tem um estado `ausente` ou `presente`.
+
+1. **Confirmação:** a classe precisa ser vista de forma contínua por
+   ≥ 1 s (lacunas de até 0,5 s entre frames são toleradas). Falsos
+   positivos de poucos frames não viram ocorrência
+2. **Publicação:** na confirmação, a classe passa a `presente` e **uma**
+   mensagem é publicada em `condoai/deteccoes` (payload 4.2), com a
+   maior confiança vista até ali. É a única linha gravada no banco
+3. **Permanência:** enquanto a classe continua sendo vista, nada é
+   publicado
+4. **Encerramento:** se a classe não é vista por `--ausencia` segundos
+   (padrão 30 s, tolera alguém passando na frente), a ocorrência termina
+   e a classe volta a `ausente`. Se reaparecer, é uma nova ocorrência
+
+Se a publicação falhar (broker fora), a classe continua `ausente` e a
+próxima detecção confirmada tenta de novo.
+
+**Limitação:** o controle é por classe. Dois sacos de lixo ao mesmo tempo
+formam uma única ocorrência de `saco_lixo` (tracking por objeto é
+trabalho futuro, 2.3).
 
 ### 4.5 Serviço de inferência HTTP (`POST /predict`)
 
@@ -336,16 +360,43 @@ python main.py --source 0 --preview --gravar demo.mp4   # janela + vídeo anotad
 ```
 
 - `--preview`: abre uma janela OpenCV com, por detecção, bounding box e
-  rótulo `classe confiança` (uma cor por classe). Por 1 s após uma
-  publicação MQTT, a caixa fica grossa e o rótulo ganha o sufixo `MQTT`,
-  mostrando o cooldown (4.4) em ação. O rodapé mostra versão do modelo,
-  FPS do loop e tempo de inferência. `q`, `ESC` ou fechar a janela encerra
-  o serviço
+  rótulo `classe confiança` (uma cor por classe). Com a ocorrência
+  confirmada (4.4), o rótulo mostra há quanto tempo a classe está
+  presente (ex.: `saco_lixo 0.87 · 2m13s`); por 1 s após a publicação
+  MQTT, a caixa fica grossa e o rótulo ganha o sufixo `MQTT`. O rodapé
+  mostra versão do modelo, FPS do loop e tempo de inferência. `q`, `ESC`
+  ou fechar a janela encerra o serviço
 - `--gravar <arquivo.mp4>`: salva o vídeo anotado (exige `--preview`).
   Com arquivo de vídeo como fonte, usa o FPS da fonte; com câmera, mede o
   FPS real do loop nos primeiros 30 frames, para o vídeo não sair acelerado
 - A publicação MQTT é idêntica com ou sem preview
 - Vídeos gravados ficam fora do git (`*.mp4` no `.gitignore`)
+
+### 4.7 Sinal de vida da câmera (`condoai/status`)
+
+Sem detecções, o dashboard não teria como mostrar que a câmera está
+monitorando. O `main.py` publica o estado da câmera em `condoai/status`:
+
+```json
+{
+  "camera_id": "cam_hall",
+  "timestamp": "2026-10-08T14:32:00.000Z",
+  "estado": "online",
+  "modelo": "v2",
+  "fps": 31.6
+}
+```
+
+- `estado: "online"` ao iniciar e a cada **10 s** enquanto o loop roda
+- `estado: "offline"` ao encerrar normalmente (fim do vídeo, `q`, Ctrl+C)
+- **Last Will:** ao conectar, o `main.py` registra no broker uma mensagem
+  `offline` (com `fps: null`). Se o processo cair ou a rede cair, o
+  próprio broker a publica quando o keepalive expira (15 s × 1,5)
+- Mensagens com **retain**: o broker guarda o último estado de cada
+  câmera, e quem assina o tópico recebe o estado atual de imediato
+- Um tópico para todas as câmeras; o `camera_id` vai no payload
+- Validação Zod no backend (2.5); payload inválido é descartado com log
+- Não é persistido: o banco guarda ocorrências, não sinais de vida
 
 ---
 
@@ -543,6 +594,29 @@ os clientes conectados.
 }
 ```
 
+**Evento `status`:** o backend também assina `condoai/status` (4.7),
+mantém o último estado de cada câmera **só em memória** e repassa cada
+mensagem aos clientes. Ao conectar, o cliente recebe um evento `status`
+por câmera conhecida (o snapshot atual):
+
+```json
+{
+  "event": "status",
+  "data": {
+    "camera_id": "cam_hall",
+    "estado": "online",
+    "modelo": "v2",
+    "fps": 31.6,
+    "ultimo_sinal": "2026-10-08T14:32:00.000Z",
+    "idade_s": 3
+  }
+}
+```
+
+- `ultimo_sinal`: `timestamp` do payload 4.7
+- `idade_s`: segundos desde que o backend recebeu a mensagem, calculado
+  no envio; o cliente usa para não depender do relógio do dispositivo
+
 ---
 
 ## 8. Frontend (Next.js 15, App Router)
@@ -594,6 +668,10 @@ os clientes conectados.
 - `DetectionFeed`: lista de detecções com timestamp, câmera, classe, confiança
   — histórico inicial via `GET /deteccoes`, eventos novos no topo,
   deduplicados por `id`
+- `CameraStatus`: um indicador por câmera, a partir dos eventos `status`
+  (7.2): "cam_hall · monitorando · último sinal há 3 s" (atualizado a
+  cada segundo no cliente). Mostra **offline** quando `estado` é
+  `offline` ou quando passam **30 s** sem sinal
 
 ### 8.3 Estrutura de pastas (Next.js)
 
@@ -613,7 +691,8 @@ apps/web/
 │   │   └── ResultCard.tsx     ← exibe resultado da inferência
 │   └── dashboard/
 │       ├── DetectionFeed.tsx  ← lista tempo real via WebSocket
-│       └── StatsBar.tsx       ← contagem por classe
+│       ├── StatsBar.tsx       ← contagem por classe
+│       └── CameraStatus.tsx   ← sinal de vida das câmeras (4.7)
 ├── lib/
 │   ├── api.ts                 ← fetch para o backend REST
 │   └── websocket.ts           ← hook useWebSocket
@@ -656,8 +735,8 @@ O backend recebe o frame, repassa ao serviço de inferência via HTTP
 - `timestamp`: momento em que a requisição chegou ao backend
 - `latencia_ms`: tempo desde a chegada da requisição até a publicação
   MQTT (ou até a resposta, quando não há detecção)
-- O cooldown da seção 4.4 não se aplica: cada captura é um pedido
-  explícito do usuário
+- O controle de ocorrências da seção 4.4 não se aplica: cada captura é
+  um pedido explícito do usuário
 - `frame` ausente ou `camera_id` inexistente → `400 { "error": "..." }`
 - Serviço de inferência indisponível → `502 { "error": "..." }`
 - O frame não é salvo em disco em nenhuma das camadas (seção 5)
@@ -678,6 +757,8 @@ O backend recebe o frame, repassa ao serviço de inferência via HTTP
 | RF08 | O dashboard deve exibir contagem por classe de resíduo |
 | RF09 | O sistema deve filtrar detecções com confiança < 0,4 |
 | RF10 | O sistema não deve armazenar imagens de pessoas nem dados pessoais (LGPD) |
+| RF11 | Na câmera fixa, o sistema deve registrar ocorrências (uma por presença de classe), não frames |
+| RF12 | O dashboard deve exibir o estado de cada câmera (monitorando / offline) |
 
 ## 10. Requisitos não funcionais
 
@@ -691,3 +772,38 @@ O backend recebe o frame, repassa ao serviço de inferência via HTTP
 | RNF06 | Modelo treinado exclusivamente nas 4 classes definidas (sem classe "pessoa") |
 | RNF07 | Código versionado com Conventional Commits |
 | RNF08 | Cada camada deve poder ser reiniciada independentemente das demais |
+
+---
+
+## 11. Topologia da demonstração em campo
+
+A demonstração reproduz uma câmera fixa de condomínio usando só a rede
+local (RNF03): sem internet, sem deploy.
+
+```
+[Celular com DroidCam]  ──Wi-Fi──►  [Notebook: main.py + YOLOv8 (GPU),   ──Wi-Fi──►  [Outro aparelho:
+ câmera IP fixa                       Mosquitto, Fastify, PostgreSQL]                  dashboard no navegador]
+ http://<ip>:4747/video
+```
+
+- **Câmera:** celular fixo apontado para a área monitorada, com o app
+  DroidCam transmitindo vídeo pela rede. O `main.py` lê o stream direto:
+  `python main.py --source http://<ip-do-celular>:4747/video --preview`.
+  A versão gratuita do DroidCam aceita um cliente por vez; o cliente do
+  DroidCam no PC precisa estar fechado
+- **Nó de borda:** o notebook processa o vídeo localmente (edge
+  computing). Na rede trafegam apenas eventos JSON (4.2 e 4.7); nenhuma
+  imagem sai do nó de inferência (seção 5)
+- **Dashboard:** aberto em outro aparelho pela LAN
+  (`http://<ip-do-notebook>:3000/dashboard`), mostrando as ocorrências e
+  o estado da câmera em tempo real
+- **Rede sem Wi-Fi no local:** roteador (hotspot) de um celular; não
+  precisa de dados móveis. Notebook, câmera e aparelho da banca entram
+  na mesma rede
+- **Firewall do Windows:** marcar a rede como **Privada** e liberar
+  entrada TCP nas portas `3000` e `3001` só no perfil Privado (PowerShell
+  como administrador). A porta `1883` só precisa ser liberada se o
+  `main.py` rodar em outra máquina
+- **Acesso externo** (fora da LAN) não faz parte da demonstração; se
+  necessário, um túnel (ex.: Cloudflare Tunnel) expõe o dashboard sem
+  deploy, mas exige internet no notebook

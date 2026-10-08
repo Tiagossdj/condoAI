@@ -19,6 +19,28 @@ export const WsDeteccaoEventSchema = z.object({
 
 export type WsDeteccaoEvent = z.infer<typeof WsDeteccaoEventSchema>
 
+// Sinal de vida da câmera (spec 4.7 e 7.2)
+export const WsStatusEventSchema = z.object({
+  event: z.literal('status'),
+  data: z.object({
+    camera_id: z.string(),
+    estado: z.enum(['online', 'offline']),
+    modelo: z.string(),
+    fps: z.number().nullable(),
+    ultimo_sinal: z.string(),
+    idade_s: z.number().int().min(0),
+  }),
+})
+
+export type WsStatusEvent = z.infer<typeof WsStatusEventSchema>
+
+export const WsEventSchema = z.discriminatedUnion('event', [
+  WsDeteccaoEventSchema,
+  WsStatusEventSchema,
+])
+
+export type WsEvent = z.infer<typeof WsEventSchema>
+
 // Sem NEXT_PUBLIC_WS_URL, usa o mesmo host da página na porta 3001 (ver api.ts)
 export function wsUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
@@ -30,8 +52,8 @@ const RECONNECT_DELAY_MS = 3000
 
 // onMessage é chamado para cada evento: lastMessage sozinho perderia eventos
 // que chegam no mesmo ciclo de renderização (o React agrupa os setState)
-export function useWebSocket(url?: string, onMessage?: (event: WsDeteccaoEvent) => void) {
-  const [lastMessage, setLastMessage] = useState<WsDeteccaoEvent | null>(null)
+export function useWebSocket(url?: string, onMessage?: (event: WsEvent) => void) {
+  const [lastMessage, setLastMessage] = useState<WsEvent | null>(null)
   const [connected, setConnected] = useState(false)
   const onMessageRef = useRef(onMessage)
 
@@ -58,7 +80,7 @@ export function useWebSocket(url?: string, onMessage?: (event: WsDeteccaoEvent) 
           return
         }
 
-        const parsed = WsDeteccaoEventSchema.safeParse(json)
+        const parsed = WsEventSchema.safeParse(json)
         if (!parsed.success) {
           console.warn('mensagem WebSocket ignorada: fora do schema', parsed.error.issues)
           return

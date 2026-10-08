@@ -10,7 +10,8 @@ import {
   type ClasseNome,
   type Deteccao,
 } from "@/lib/api";
-import { useWebSocket, type WsDeteccaoEvent } from "@/lib/websocket";
+import { useWebSocket, type WsDeteccaoEvent, type WsStatusEvent } from "@/lib/websocket";
+import { CameraStatus, type CameraStatusItem } from "./CameraStatus";
 import { DetectionFeed, type FeedItem } from "./DetectionFeed";
 import { StatsBar } from "./StatsBar";
 
@@ -40,6 +41,11 @@ function fromWs({ data }: WsDeteccaoEvent): FeedItem | null {
   return classe.success ? { ...data, classe: classe.data } : null;
 }
 
+function fromStatus({ data }: WsStatusEvent): CameraStatusItem {
+  const { camera_id, estado, modelo, fps, idade_s } = data;
+  return { camera_id, estado, modelo, fps, recebidoEm: Date.now() - idade_s * 1000 };
+}
+
 // Junta listas sem repetir id, da mais recente para a mais antiga
 function merge(a: FeedItem[], b: FeedItem[]): FeedItem[] {
   const porId = new Map<number, FeedItem>();
@@ -57,6 +63,7 @@ export function Dashboard() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [cameras, setCameras] = useState<Record<string, CameraStatusItem>>({});
 
   // Maior id já contado em /estatisticas (spec 7.1). undefined = ainda
   // carregando: eventos desse intervalo ficam pendentes até a resposta
@@ -77,6 +84,11 @@ export function Dashboard() {
   }, []);
 
   const { connected } = useWebSocket(undefined, (event) => {
+    if (event.event === "status") {
+      const status = fromStatus(event);
+      setCameras((prev) => ({ ...prev, [status.camera_id]: status }));
+      return;
+    }
     const item = fromWs(event);
     if (!item) return;
     setItems((prev) => merge([item], prev));
@@ -123,17 +135,24 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="flex items-center gap-2 text-sm" aria-live="polite" data-testid="status">
-        <span
-          className={
-            connected
-              ? "size-2 animate-pulse rounded-full bg-accent-warm"
-              : "size-2 rounded-full bg-muted-foreground"
-          }
-        />
-        <span className={connected ? "text-foreground" : "text-muted-foreground"}>
-          {connected ? "Ao vivo" : "Reconectando…"}
-        </span>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-sm" aria-live="polite" data-testid="status">
+          <span
+            className={
+              connected
+                ? "size-2 animate-pulse rounded-full bg-accent-warm"
+                : "size-2 rounded-full bg-muted-foreground"
+            }
+          />
+          <span className={connected ? "text-foreground" : "text-muted-foreground"}>
+            {connected ? "Ao vivo" : "Reconectando…"}
+          </span>
+        </div>
+        <section aria-label="Câmeras">
+          <CameraStatus
+            cameras={Object.values(cameras).sort((a, b) => a.camera_id.localeCompare(b.camera_id))}
+          />
+        </section>
       </div>
 
       {error && (

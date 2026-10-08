@@ -257,17 +257,23 @@
     vazio 40 s → papelão 20 s) com backend no ar gerou **2 linhas** em `deteccoes`
     (com o cooldown de 5 s seriam ~18); publicação 1 s após o objeto aparecer
 
-- [ ] **T26** — Sinal de vida da câmera no dashboard
+- [x] **T26** — Sinal de vida da câmera no dashboard
   - Dependência: T25 concluída
-  - `main.py`: publica `online` em `condoai/status` a cada 10 s, `offline` ao
+  - `main.py`: publica `online` em `condoai/status/<camera_id>` a cada 10 s, `offline` ao
     encerrar; Last Will `offline`; retain; keepalive 15 s (spec 4.7)
-  - Backend: subscribe em `condoai/status` com validação Zod; estado em memória;
+  - Backend: subscribe em `condoai/status/+` com validação Zod; estado em memória;
     evento WebSocket `status` + snapshot na conexão (spec 7.2)
   - Web: componente `CameraStatus` no dashboard; offline após 30 s sem sinal (spec 8.2)
   - **Commit:** `feat(backend): repassar sinal de vida das câmeras ao dashboard`
     (um commit por escopo: `inference`, `backend`, `web`)
   - **Evidência:** dashboard mostra "monitorando" com o `main.py` rodando;
     "offline" ao fechar com `q`; "offline" ao matar o processo (Last Will)
+  - **Resultado:** broker recebe `online` na conexão e a cada 10 s, `offline` no
+    encerramento normal; processo morto à força → `offline` do Last Will publicado
+    pelo broker em ~1 s (socket fechado pelo SO; em queda de rede, keepalive ~23 s);
+    smoke test do backend 3/3 (broadcast, snapshot na conexão, payload inválido
+    descartado); cliente WebSocket recebe snapshot + `online` + `offline` do `main.py`
+    real; `tsc` e `eslint` sem erros no web
 
 - [ ] **T27** — Demonstração em campo com câmera IP fixa
   - Dependência: T26 concluída

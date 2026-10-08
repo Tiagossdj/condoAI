@@ -632,7 +632,7 @@ relógio local.
   "por_camera": [
     { "camera_id": "cam_entrada", "localizacao": "entrada_garagem", "total": 9, "ultima": "2026-10-08T17:42:00.000Z" }
   ],
-  "latencia_hist": [ { "de_ms": 0, "ate_ms": 10, "total": 3 } ],
+  "latencia_hist": [ { "de_ms": 10, "ate_ms": 20, "total": 3 }, { "de_ms": 3000, "ate_ms": null, "total": 0 } ],
   "confianca_hist": [
     { "faixa": "0.4-0.5", "saco_lixo": 1, "garrafa_pet": 0, "papelao": 2, "lixo_generico": 0 }
   ]
@@ -650,8 +650,11 @@ relógio local.
   só células com total > 0
 - `por_classe`: as 4 classes, na ordem da seção 3.2, inclusive com zero
 - `por_camera`: câmeras ativas, inclusive sem detecções (`ultima: null`)
-- `latencia_hist`: faixas de 10 ms; `confianca_hist`: faixas de 0,1 entre
-  0,4 (threshold, 4.3) e 1,0
+- `latencia_hist`: faixas de largura crescente (0, 10, 20, 50, 100, 200,
+  500, 1000, 2000, 3000 ms; a última, `ate_ms: null`, é "≥ 3 s", acima da
+  meta da H2): o `main.py` fica em dezenas de ms e o `/scan` (HTTP +
+  inferência) em centenas, e faixas fixas de 10 ms gerariam centenas de
+  barras. `confianca_hist`: faixas de 0,1 entre 0,4 (threshold, 4.3) e 1,0
 - O estado online/offline das câmeras não vem daqui: vem dos eventos
   `status` do WebSocket (7.2)
 
@@ -806,9 +809,14 @@ apps/web/
 │       ├── PorCamera.tsx      ← tabela por câmera/local
 │       ├── Latencia.tsx       ← distribuição captura → publicação
 │       ├── Confianca.tsx      ← distribuição da confiança por classe
-│       └── Modelo.tsx         ← versão e mAP@50 do modelo
+│       ├── Modelo.tsx         ← versão e mAP@50 do modelo
+│       ├── BarrasPorClasse.tsx ← colunas empilhadas por classe (linha do tempo, confiança)
+│       └── Bloco.tsx          ← moldura comum dos blocos analíticos
 ├── lib/
 │   ├── api.ts                 ← fetch para o backend REST
+│   ├── classes.ts             ← classes e cores fixas por classe nos gráficos
+│   ├── painel.ts              ← rótulos de período e formatação no fuso local
+│   ├── modelo.ts              ← mAP@50 por versão (models/<versão>/metricas.md)
 │   └── websocket.ts           ← hook useWebSocket
 └── package.json
 ```

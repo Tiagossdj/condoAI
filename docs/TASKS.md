@@ -275,7 +275,7 @@
     descartado); cliente WebSocket recebe snapshot + `online` + `offline` do `main.py`
     real; `tsc` e `eslint` sem erros no web
 
-- [ ] **T27** — Filtros de campo: área monitorada e confirmação por proporção
+- [x] **T27** — Filtros de campo: área monitorada e confirmação por proporção
   - Dependência: T26 concluída
   - Motivo: vídeo de campo (8 s) com o v2 detectou o saco em 100% dos frames,
     mas uma tomada virou `papelao` (26% dos frames) e gerou uma ocorrência falsa
@@ -286,6 +286,11 @@
   - **Evidência:** testes da lógica de ocorrências (incluindo 26% → nenhuma,
     100% e 75% → uma); vídeo de campo: 2 → 1 ocorrência só com a proporção;
     com a área no chão, a tomada aparece como `fora da area`
+  - **Resultado:** lógica de ocorrências 17/17 casos OK (25% e 50% → nenhuma;
+    75% e 100% → uma; ponto de apoio dentro/fora da área); vídeo de campo:
+    2 → **1 ocorrência** (`saco_lixo`) só com a proporção; com `--area 0,0.55,1,1`
+    a tomada sai como `papelao - fora da area` e o `main.py` gravou 1 linha
+    em `deteccoes` (`saco_lixo` 0,881)
 
 - [ ] **T28** — Demonstração em campo com câmera IP fixa
   - Dependência: T27 concluída

@@ -1,13 +1,14 @@
 // Smoke test de integração do pipeline completo (tarefa T21):
 // POST /scan → inferência → MQTT → subscriber → Postgres → WebSocket → GET /deteccoes.
 // Sinal de vida (T26): condoai/status/<camera_id> → backend → evento WebSocket "status" + snapshot.
+// Painel (T28): GET /painel confere com contagens diretas no banco e com o fuso local.
 // Pré-requisitos: Docker (Postgres + Mosquitto), server.py (8000) e backend (3001) no ar.
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import pg from 'pg'
 import mqtt from 'mqtt'
-import { DeteccoesResponseSchema, ScanResponseSchema } from '../src/schemas/index.js'
+import { DeteccoesResponseSchema, PainelResponseSchema, ScanResponseSchema } from '../src/schemas/index.js'
 
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3001'
 const CAMERA_ID = 'cam_test'
@@ -173,4 +174,71 @@ test('sinal de vida: condoai/status/<camera_id> → evento WebSocket "status" + 
     await publicar('offline', new Date().toISOString())
     await client.endAsync()
   }
+})
+
+test('GET /painel: agregados batem com o banco e as horas seguem o fuso local', async () => {
+  const TZ = 'America/Sao_Paulo'
+  for (const periodo of ['24h', '7d', '30d'] as const) {
+    const res = await fetch(`${BACKEND_URL}/painel?periodo=${periodo}`)
+    assert.equal(res.status, 200)
+    const p = PainelResponseSchema.parse(await res.json())
+
+    const { rows } = await db.query<{
+      total_geral: number
+      total_periodo: number
+      hoje: number
+      com_latencia: number
+    }>(
+      `SELECT count(*)::int AS total_geral,
+              count(*) FILTER (WHERE timestamp >= $1)::int AS total_periodo,
+              count(*) FILTER (WHERE (timestamp AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date)::int AS hoje,
+              count(*) FILTER (WHERE timestamp >= $1 AND latencia_ms IS NOT NULL)::int AS com_latencia
+       FROM deteccoes`,
+      [p.de, TZ],
+    )
+    const banco = rows[0]!
+    const soma = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
+    const somaClasses = (r: { saco_lixo: number; garrafa_pet: number; papelao: number; lixo_generico: number }) =>
+      r.saco_lixo + r.garrafa_pet + r.papelao + r.lixo_generico
+
+    // Uma detecção pode chegar entre a resposta e a consulta: tolera +1
+    assert.ok(banco.total_geral - p.indicadores.total_geral <= 1, `${periodo}: total_geral`)
+    assert.ok(banco.total_periodo - p.indicadores.total_periodo <= 1, `${periodo}: total_periodo`)
+    assert.ok(banco.hoje - p.indicadores.hoje <= 1, `${periodo}: hoje`)
+    assert.ok(banco.com_latencia - soma(p.latencia_hist.map((f) => f.total)) <= 1, `${periodo}: latencia_hist`)
+
+    // Cada bloco soma o mesmo total do período
+    const total = p.indicadores.total_periodo
+    assert.equal(soma(p.serie.map(somaClasses)), total, `${periodo}: serie`)
+    assert.equal(soma(p.por_classe.map((c) => c.total)), total, `${periodo}: por_classe`)
+    assert.equal(soma(p.confianca_hist.map(somaClasses)), total, `${periodo}: confianca_hist`)
+    assert.deepEqual(p.por_classe.map((c) => c.classe), ['saco_lixo', 'garrafa_pet', 'papelao', 'lixo_generico'])
+
+    // Série completa e alinhada ao fuso local: 24 horas ou N dias, a última
+    // começando na hora (ou dia) local atual
+    assert.equal(p.serie.length, { '24h': 24, '7d': 7, '30d': 30 }[periodo])
+    const partes = (d: Date) =>
+      Object.fromEntries(
+        new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+          .formatToParts(d)
+          .map((x) => [x.type, x.value]),
+      )
+    const ultima = partes(new Date(p.serie.at(-1)!.inicio))
+    const agora = partes(new Date())
+    assert.equal(ultima.minute, '00')
+    assert.equal(ultima.day, agora.day)
+    if (p.intervalo === 'hora') assert.equal(ultima.hour, agora.hour)
+    else assert.equal(ultima.hour, '00')
+    assert.equal(p.serie[0]!.inicio, p.de)
+  }
+
+  // ?de= no GET /deteccoes: nada anterior ao início do período
+  const p24 = PainelResponseSchema.parse(await (await fetch(`${BACKEND_URL}/painel?periodo=24h`)).json())
+  const lista = DeteccoesResponseSchema.parse(
+    await (await fetch(`${BACKEND_URL}/deteccoes?limite=200&de=${encodeURIComponent(p24.de)}`)).json(),
+  )
+  assert.ok(lista.data.every((d) => d.timestamp >= p24.de), 'GET /deteccoes?de= devolveu detecção anterior ao período')
+
+  // Período inválido → 400
+  assert.equal((await fetch(`${BACKEND_URL}/painel?periodo=1h`)).status, 400)
 })

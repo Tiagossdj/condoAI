@@ -25,6 +25,7 @@ export const DeteccoesQuerySchema = z.object({
   cursor: z.iso.datetime({ offset: true }).optional(),
   camera_id: z.string().optional(),
   classe: z.string().optional(),
+  de: z.iso.datetime({ offset: true }).optional(),
 })
 
 export const DeteccoesResponseSchema = z.object({
@@ -93,6 +94,64 @@ export const EstatisticasResponseSchema = z.object({
     }),
   ),
 })
+
+// GET /painel (spec 7.1): agregados do dashboard analítico
+export const PainelQuerySchema = z.object({
+  periodo: z.enum(['24h', '7d', '30d']).default('24h'),
+})
+
+const PorClasseNumSchema = z.object({
+  saco_lixo: z.number().int().min(0),
+  garrafa_pet: z.number().int().min(0),
+  papelao: z.number().int().min(0),
+  lixo_generico: z.number().int().min(0),
+})
+
+export const PainelResponseSchema = z.object({
+  periodo: z.enum(['24h', '7d', '30d']),
+  de: z.string(),
+  ate: z.string(),
+  intervalo: z.enum(['hora', 'dia']),
+  indicadores: z.object({
+    total_periodo: z.number().int().min(0),
+    hoje: z.number().int().min(0),
+    ontem: z.number().int().min(0),
+    total_geral: z.number().int().min(0),
+    confianca_media: z.number().nullable(),
+    latencia_ms: z
+      .object({ p50: z.number(), p95: z.number(), max: z.number() })
+      .nullable(),
+  }),
+  serie: z.array(PorClasseNumSchema.extend({ inicio: z.string() })),
+  heatmap_30d: z.array(
+    z.object({
+      dia_semana: z.number().int().min(0).max(6),
+      hora: z.number().int().min(0).max(23),
+      total: z.number().int().min(1),
+    }),
+  ),
+  por_classe: z.array(
+    z.object({
+      classe: ClasseNomeSchema,
+      total: z.number().int().min(0),
+      confianca_media: z.number().nullable(),
+    }),
+  ),
+  por_camera: z.array(
+    z.object({
+      camera_id: z.string(),
+      localizacao: z.string(),
+      total: z.number().int().min(0),
+      ultima: z.string().nullable(),
+    }),
+  ),
+  latencia_hist: z.array(
+    z.object({ de_ms: z.number().int(), ate_ms: z.number().int().nullable(), total: z.number().int().min(0) }),
+  ),
+  confianca_hist: z.array(PorClasseNumSchema.extend({ faixa: z.string() })),
+})
+
+export type PainelResponse = z.infer<typeof PainelResponseSchema>
 
 // Resposta do POST /scan (spec 8.4): top-1, campos null sem detecção
 export const ScanResponseSchema = z.object({

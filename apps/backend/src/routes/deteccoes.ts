@@ -66,7 +66,7 @@ export default async function deteccoesRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const { limite, cursor, camera_id, classe } = request.query
+      const { limite, cursor, camera_id, classe, de } = request.query
 
       const conditions: string[] = []
       const params: unknown[] = []
@@ -74,6 +74,10 @@ export default async function deteccoesRoutes(fastify: FastifyInstance) {
       if (cursor) {
         params.push(cursor)
         conditions.push(`d.timestamp < $${params.length}`)
+      }
+      if (de) {
+        params.push(de)
+        conditions.push(`d.timestamp >= $${params.length}`)
       }
       if (camera_id) {
         params.push(camera_id)

@@ -261,7 +261,7 @@ INSERT INTO cameras (camera_id, localizacao) VALUES
 | Tópico | Conteúdo | Publicado por |
 |---|---|---|
 | `condoai/deteccoes` | uma mensagem por ocorrência (4.2 e 4.4) | `main.py` e `POST /scan` (8.4) |
-| `condoai/status` | sinal de vida da câmera (4.7) | `main.py` e broker (Last Will) |
+| `condoai/status/<camera_id>` | sinal de vida da câmera (4.7); um tópico por câmera | `main.py` e broker (Last Will) |
 
 ### 4.2 Payload (JSON)
 
@@ -372,10 +372,11 @@ python main.py --source 0 --preview --gravar demo.mp4   # janela + vídeo anotad
 - A publicação MQTT é idêntica com ou sem preview
 - Vídeos gravados ficam fora do git (`*.mp4` no `.gitignore`)
 
-### 4.7 Sinal de vida da câmera (`condoai/status`)
+### 4.7 Sinal de vida da câmera (`condoai/status/<camera_id>`)
 
 Sem detecções, o dashboard não teria como mostrar que a câmera está
-monitorando. O `main.py` publica o estado da câmera em `condoai/status`:
+monitorando. O `main.py` publica o estado da câmera em
+`condoai/status/<camera_id>` (ex.: `condoai/status/cam_hall`):
 
 ```json
 {
@@ -394,7 +395,10 @@ monitorando. O `main.py` publica o estado da câmera em `condoai/status`:
   próprio broker a publica quando o keepalive expira (15 s × 1,5)
 - Mensagens com **retain**: o broker guarda o último estado de cada
   câmera, e quem assina o tópico recebe o estado atual de imediato
-- Um tópico para todas as câmeras; o `camera_id` vai no payload
+- **Um tópico por câmera:** o broker retém uma única mensagem por
+  tópico; com um tópico compartilhado, só o status da última câmera a
+  publicar ficaria retido. O backend assina `condoai/status/+` e descarta
+  payloads cujo `camera_id` difere do sufixo do tópico
 - Validação Zod no backend (2.5); payload inválido é descartado com log
 - Não é persistido: o banco guarda ocorrências, não sinais de vida
 
@@ -594,7 +598,7 @@ os clientes conectados.
 }
 ```
 
-**Evento `status`:** o backend também assina `condoai/status` (4.7),
+**Evento `status`:** o backend também assina `condoai/status/+` (4.7),
 mantém o último estado de cada câmera **só em memória** e repassa cada
 mensagem aos clientes. Ao conectar, o cliente recebe um evento `status`
 por câmera conhecida (o snapshot atual):

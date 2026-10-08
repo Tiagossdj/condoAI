@@ -1,4 +1,4 @@
-"""Loop principal do serviço de inferência: captura → YOLOv8 → MQTT (spec seções 2.1, 4 e 4.6)."""
+"""Loop principal do serviço de inferência: captura → YOLOv8 → MQTT (spec seções 2.1, 4, 4.6 e 4.7)."""
 
 import argparse
 import logging
@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import cv2
 
-from config import CAMERA_ID, CLASSES, LOCALIZACAO, MODEL_VERSION
+from config import CAMERA_ID, CLASSES, LOCALIZACAO, MODEL_VERSION, STATUS_INTERVALO_S
 
 logger = logging.getLogger("inference")
 
@@ -242,6 +242,10 @@ def run(
         gravador = Gravador(gravar, fps_fonte or None)
     fps = 0.0
     t_anterior = time.perf_counter()
+    primeiro_frame = True
+    # Sinal de vida (spec 4.7) sai do próprio loop: se a captura travar, o
+    # sinal para e o dashboard mostra a câmera offline
+    ultimo_status = float("-inf")
 
     try:
         while True:
@@ -281,14 +285,22 @@ def run(
                         payload["latencia_ms"],
                     )
 
+            # FPS do loop completo (captura + inferência + publicação), suavizado
+            # O 1º frame só marca o tempo: inclui o aquecimento do modelo
+            t_atual = time.perf_counter()
+            if primeiro_frame:
+                primeiro_frame = False
+            else:
+                instantaneo = 1 / max(t_atual - t_anterior, 1e-6)
+                fps = instantaneo if fps == 0 else 0.9 * fps + 0.1 * instantaneo
+            t_anterior = t_atual
+
+            if agora - ultimo_status >= STATUS_INTERVALO_S:
+                publisher.publish_status("online", fps or None)
+                ultimo_status = agora
+
             if not preview:
                 continue
-
-            # FPS do loop completo (captura + inferência + publicação), suavizado
-            t_atual = time.perf_counter()
-            instantaneo = 1 / max(t_atual - t_anterior, 1e-6)
-            fps = instantaneo if fps == 0 else 0.9 * fps + 0.1 * instantaneo
-            t_anterior = t_atual
 
             for d in deteccoes:
                 d["publicado"] = ocorrencias.em_destaque(d["classe"], agora)

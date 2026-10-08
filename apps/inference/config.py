@@ -19,6 +19,9 @@ LOCALIZACAO = os.environ.get("LOCALIZACAO", "Ambiente de teste — desenvolvimen
 
 # Constantes fixas
 MQTT_TOPIC = "condoai/deteccoes"
+STATUS_TOPIC = f"condoai/status/{CAMERA_ID}"  # sinal de vida, um tópico por câmera (spec 4.7)
+STATUS_INTERVALO_S = 10
+MQTT_KEEPALIVE_S = 15  # broker publica o Last Will após 1,5 × keepalive sem contato
 CONFIDENCE_THRESHOLD = 0.4
 
 # A posição na lista é o ID da classe no data.yaml (0–3)

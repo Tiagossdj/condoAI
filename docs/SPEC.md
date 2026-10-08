@@ -362,7 +362,7 @@ python main.py --source 0 --preview --gravar demo.mp4   # janela + vídeo anotad
 - `--preview`: abre uma janela OpenCV com, por detecção, bounding box e
   rótulo `classe confiança` (uma cor por classe). Com a ocorrência
   confirmada (4.4), o rótulo mostra há quanto tempo a classe está
-  presente (ex.: `saco_lixo 0.87 · 2m13s`); por 1 s após a publicação
+  presente (ex.: `saco_lixo 0.87 - 2m13s`); por 1 s após a publicação
   MQTT, a caixa fica grossa e o rótulo ganha o sufixo `MQTT`. O rodapé
   mostra versão do modelo, FPS do loop e tempo de inferência. `q`, `ESC`
   ou fechar a janela encerra o serviço

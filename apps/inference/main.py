@@ -26,10 +26,109 @@ DESTAQUE_MQTT_S = 1.0
 # Frames usados para medir o FPS real da câmera antes de abrir o vídeo (--gravar)
 FRAMES_MEDICAO_FPS = 30
 
+# Ocorrências (spec 4.4)
+CONFIRMACAO_S = 1.0  # tempo contínuo vendo a classe até virar ocorrência
+LACUNA_S = 0.5  # lacuna tolerada entre frames durante a confirmação
+
 
 def parse_source(source: str) -> int | str:
     # "0", "1"... são índices de câmera; qualquer outro valor é caminho de vídeo
     return int(source) if source.isdigit() else source
+
+
+def formatar_duracao(segundos: float) -> str:
+    s = int(segundos)
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        return f"{s // 60}m{s % 60:02d}s"
+    return f"{s // 3600}h{s % 3600 // 60:02d}m"
+
+
+class Ocorrencias:
+    """Estado ausente/presente por classe (spec 4.4).
+
+    Cada classe passa por: candidata (vista há menos de CONFIRMACAO_S) →
+    presente (confirmada e publicada uma única vez) → encerrada (não vista
+    por `ausencia` segundos). Não depende de câmera nem de MQTT: o tempo
+    entra como parâmetro, o que permite testar a lógica isoladamente.
+    """
+
+    def __init__(
+        self,
+        ausencia: float = 30.0,
+        confirmacao: float = CONFIRMACAO_S,
+        lacuna: float = LACUNA_S,
+    ) -> None:
+        self.ausencia = ausencia
+        self.confirmacao = confirmacao
+        self.lacuna = lacuna
+        # classe → {"inicio", "ultimo", "confianca", "presente", "publicado_em"}
+        self.estado: dict[str, dict] = {}
+
+    def atualizar(self, deteccoes: list[dict], agora: float) -> list[str]:
+        """Registra as detecções do frame; devolve as classes a publicar."""
+        vistas: dict[str, float] = {}
+        for d in deteccoes:
+            vistas[d["classe"]] = max(vistas.get(d["classe"], 0.0), d["confianca"])
+
+        for classe, confianca in vistas.items():
+            e = self.estado.get(classe)
+            # Candidata com lacuna longa recomeça a confirmação do zero; ocorrência
+            # cuja ausência expirou sem frames no meio (ex.: stream travado) termina
+            if e and agora - e["ultimo"] > (self.ausencia if e["presente"] else self.lacuna):
+                self._encerrar(classe, e)
+                e = None
+            if e is None:
+                self.estado[classe] = {
+                    "inicio": agora,
+                    "ultimo": agora,
+                    "confianca": confianca,
+                    "presente": False,
+                    "publicado_em": None,
+                }
+            else:
+                e["ultimo"] = agora
+                e["confianca"] = max(e["confianca"], confianca)
+
+        for classe, e in list(self.estado.items()):
+            if classe in vistas:
+                continue
+            if agora - e["ultimo"] > (self.ausencia if e["presente"] else self.lacuna):
+                self._encerrar(classe, e)
+
+        return [
+            classe
+            for classe in vistas
+            if not self.estado[classe]["presente"]
+            and agora - self.estado[classe]["inicio"] >= self.confirmacao
+        ]
+
+    def _encerrar(self, classe: str, e: dict) -> None:
+        if e["presente"]:
+            logger.info(
+                "ocorrência encerrada: %s, durou %s",
+                classe,
+                formatar_duracao(e["ultimo"] - e["inicio"]),
+            )
+        del self.estado[classe]
+
+    def confianca(self, classe: str) -> float:
+        return round(self.estado[classe]["confianca"], 3)
+
+    def publicada(self, classe: str, agora: float) -> None:
+        e = self.estado[classe]
+        e["presente"] = True
+        e["publicado_em"] = agora
+
+    def presenca(self, classe: str, agora: float) -> float | None:
+        """Segundos desde o início da ocorrência; None se não confirmada."""
+        e = self.estado.get(classe)
+        return agora - e["inicio"] if e and e["presente"] else None
+
+    def em_destaque(self, classe: str, agora: float) -> bool:
+        e = self.estado.get(classe)
+        return bool(e and e["presente"] and agora - e["publicado_em"] < DESTAQUE_MQTT_S)
 
 
 def desenhar(frame, deteccoes: list[dict], fps: float, inferencia_ms: int) -> None:
@@ -37,9 +136,14 @@ def desenhar(frame, deteccoes: list[dict], fps: float, inferencia_ms: int) -> No
     for d in deteccoes:
         x1, y1, x2, y2 = (int(v) for v in d["bbox"])
         cor = CORES[d["classe"]]
-        # Caixa grossa + "MQTT" logo após a classe ser publicada
+        # Caixa grossa + "MQTT" logo após a ocorrência ser publicada
         espessura = 4 if d["publicado"] else 2
-        rotulo = f"{d['classe']} {d['confianca']:.2f}" + (" MQTT" if d["publicado"] else "")
+        rotulo = f"{d['classe']} {d['confianca']:.2f}"
+        if d["presenca_s"] is not None:
+            # Hershey (cv2.putText) só desenha ASCII: separador "-" em vez de "·"
+            rotulo += f" - {formatar_duracao(d['presenca_s'])}"
+        if d["publicado"]:
+            rotulo += " MQTT"
 
         cv2.rectangle(frame, (x1, y1), (x2, y2), cor, espessura)
         (lw, lh), base = cv2.getTextSize(rotulo, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
@@ -122,7 +226,7 @@ def run(
     source: int | str,
     detector,
     publisher,
-    cooldown: float = 5.0,
+    ausencia: float = 30.0,
     preview: bool = False,
     gravar: str | None = None,
 ) -> None:
@@ -130,8 +234,7 @@ def run(
     if not cap.isOpened():
         raise RuntimeError(f"não foi possível abrir a fonte de vídeo: {source}")
 
-    # Momento (monotônico) da última publicação de cada classe (spec 4.4)
-    ultima_publicacao: dict[str, float] = {}
+    ocorrencias = Ocorrencias(ausencia)
 
     gravador = None
     if gravar:
@@ -157,29 +260,22 @@ def run(
             deteccoes = detector.predict(frame)
             inferencia_ms = round((time.perf_counter() - t0) * 1000)
 
-            for deteccao in deteccoes:
-                classe = deteccao["classe"]
-                agora = time.monotonic()
-                desde = agora - ultima_publicacao.get(classe, float("-inf"))
-                deteccao["publicado"] = desde < DESTAQUE_MQTT_S
-                if desde < cooldown:
-                    continue
-
+            agora = time.monotonic()
+            for classe in ocorrencias.atualizar(deteccoes, agora):
                 payload = {
                     "timestamp": timestamp,
                     "camera_id": CAMERA_ID,
                     "classe": classe,
-                    "confianca": deteccao["confianca"],
+                    "confianca": ocorrencias.confianca(classe),
                     "localizacao": LOCALIZACAO,
                     "latencia_ms": round((time.perf_counter() - t0) * 1000),
                 }
-                # O cooldown só começa se a publicação foi enviada; com o broker
-                # fora, a próxima detecção após a reconexão ainda é publicada
+                # Só vira "presente" se a publicação foi enviada; com o broker
+                # fora, a classe segue candidata e é publicada após a reconexão
                 if publisher.publish(payload):
-                    ultima_publicacao[classe] = agora
-                    deteccao["publicado"] = True
+                    ocorrencias.publicada(classe, agora)
                     logger.info(
-                        "publicado: %s %.3f (%d ms)",
+                        "ocorrência publicada: %s %.3f (%d ms)",
                         classe,
                         payload["confianca"],
                         payload["latencia_ms"],
@@ -194,6 +290,9 @@ def run(
             fps = instantaneo if fps == 0 else 0.9 * fps + 0.1 * instantaneo
             t_anterior = t_atual
 
+            for d in deteccoes:
+                d["publicado"] = ocorrencias.em_destaque(d["classe"], agora)
+                d["presenca_s"] = ocorrencias.presenca(d["classe"], agora)
             desenhar(frame, deteccoes, fps, inferencia_ms)
             if gravador:
                 gravador.escrever(frame)
@@ -220,10 +319,10 @@ def main() -> None:
         "--source", required=True, help="índice da câmera (ex.: 0) ou caminho de vídeo"
     )
     parser.add_argument(
-        "--cooldown",
+        "--ausencia",
         type=float,
-        default=5.0,
-        help="segundos sem republicar a mesma classe (padrão: 5)",
+        default=30.0,
+        help="segundos sem ver a classe até encerrar a ocorrência (padrão: 30)",
     )
     parser.add_argument(
         "--preview",
@@ -254,7 +353,7 @@ def main() -> None:
             parse_source(args.source),
             detector,
             publisher,
-            args.cooldown,
+            args.ausencia,
             preview=args.preview,
             gravar=args.gravar,
         )

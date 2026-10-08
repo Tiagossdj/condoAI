@@ -241,17 +241,21 @@
 > monitorando um local de forma contínua, sem superlotar o banco
 > (spec 4.4, 4.7 e 11).
 
-- [ ] **T25** — Ocorrências por classe no `main.py` (substitui o cooldown)
+- [x] **T25** — Ocorrências por classe no `main.py` (substitui o cooldown)
   - Dependência: T24 concluída
   - Estado `ausente`/`presente` por classe; confirmação após ≥ 1 s contínuo
     (lacunas ≤ 0,5 s); uma publicação por ocorrência; encerramento após
     `--ausencia` s sem ver a classe (padrão 30); `--cooldown` removido (spec 4.4)
-  - `--preview`: rótulo com tempo de presença (ex.: `saco_lixo 0.87 · 2m13s`) (spec 4.6)
+  - `--preview`: rótulo com tempo de presença (ex.: `saco_lixo 0.87 - 2m13s`) (spec 4.6)
   - Sem alteração de schema nem de payload
   - **Commit:** `feat(inference): registrar ocorrências por classe em vez de detecções periódicas`
   - **Evidência:** vídeo de teste com um objeto parado por > 1 min gera 1 linha
     em `deteccoes` (antes: 1 a cada 5 s); objeto que some > 30 s e volta gera 2;
     falso positivo de poucos frames não gera nenhuma
+  - **Resultado:** lógica isolada (tempo simulado, 30 fps) 13/13 casos OK, incluindo
+    lacunas < 0,5 s, broker fora e stream travado; vídeo de 130 s (papelão 70 s →
+    vazio 40 s → papelão 20 s) com backend no ar gerou **2 linhas** em `deteccoes`
+    (com o cooldown de 5 s seriam ~18); publicação 1 s após o objeto aparecer
 
 - [ ] **T26** — Sinal de vida da câmera no dashboard
   - Dependência: T25 concluída

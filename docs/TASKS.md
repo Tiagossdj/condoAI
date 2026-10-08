@@ -216,12 +216,15 @@
   - **Resultado:** mAP@50 v1 47,3% → v2 **67,7%** (H1 atingida); saco_lixo 9,8% → 93,0%;
     demais classes estáveis (±1 p.p.). Detalhes em `models/v2/metricas.md`
 
-- [ ] **T23** — Treinar modelo v3 (rodada final, 100 épocas)
+- [x] **T23** — Treinar modelo v3 (rodada final, 100 épocas)
   - Dependência: T22 concluída
   - Dataset `condoai_v2`, YOLOv8n, 100 épocas (spec 6.2, "Final")
   - `python train.py --versao v3 --dataset condoai_v2 --epocas 100`
   - **Commit:** `feat(inference): adicionar modelo v3 com 100 épocas`
   - **Evidência:** tabela comparativa v1 × v2 × v3 no teste
+  - **Resultado:** mAP@50 no teste v1 48,7% → v2 **67,7%** → v3 66,6% (H1 mantida);
+    validação satura entre as épocas 40 e 60. v2 segue em produção.
+    Detalhes em `models/v3/metricas.md`
 
 - [ ] **T24** — Monitoramento contínuo com visualização das detecções
   - Dependência: T23 concluída (modelo com bounding boxes confiáveis)

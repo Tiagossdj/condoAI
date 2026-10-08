@@ -389,6 +389,17 @@ epochs=100
 **Hardware:** Acer Nitro 5, GTX 1650, CUDA 11.8. YOLOv8m é mais lento
 neste hardware — preferir n/s na fase exploratória.
 
+**Resultado das rodadas** (YOLOv8n, `condoai_v2`, split de teste):
+
+| Versão | Épocas | Melhor época | mAP@50 val | mAP@50 teste |
+|---|---|---|---|---|
+| v2 | 50 | 40 | 75,1% | **67,7%** |
+| v3 | 100 | 64 | 75,8% | 66,6% |
+
+A rodada final de 100 épocas não superou a de 50: a validação satura entre
+as épocas 40 e 60, e o teste caiu 1,1 p.p. O modelo em produção continua
+sendo o **v2**. Detalhes em `apps/inference/models/v3/metricas.md`.
+
 ### 6.3 Métricas de avaliação
 
 | Métrica | Descrição | Meta (H1) |

@@ -1,9 +1,17 @@
 import fp from 'fastify-plugin'
 import mqtt from 'mqtt'
 import type { FastifyInstance } from 'fastify'
-import { MqttPayloadSchema, type MqttPayload } from '../schemas/index.js'
+import {
+  MqttPayloadSchema,
+  StatusPayloadSchema,
+  type MqttPayload,
+  type StatusPayload,
+} from '../schemas/index.js'
 
 const TOPIC = 'condoai/deteccoes'
+// Um tópico por câmera: o broker retém uma mensagem por tópico (spec 4.7)
+const STATUS_PREFIX = 'condoai/status/'
+const STATUS_TOPIC = `${STATUS_PREFIX}+`
 
 const INSERT_DETECCAO = `
   WITH ins AS (
@@ -23,6 +31,9 @@ type InsertRow = {
   localizacao: string
 }
 
+// Último sinal de vida de cada câmera, só em memória (spec 4.7 e 7.2)
+type StatusCamera = { payload: StatusPayload; recebidoEm: number }
+
 declare module 'fastify' {
   interface FastifyInstance {
     publishDeteccao: (payload: MqttPayload) => Promise<boolean>
@@ -38,12 +49,12 @@ export default fp(
     const client = mqtt.connect(`mqtt://${host}:${port}`, { reconnectPeriod: 1000 })
 
     client.on('connect', () => {
-      client.subscribe(TOPIC, { qos: 1 }, (err) => {
+      client.subscribe([TOPIC, STATUS_TOPIC], { qos: 1 }, (err) => {
         if (err) {
           fastify.log.error({ err }, 'falha ao assinar tópico MQTT')
           return
         }
-        fastify.log.info({ topic: TOPIC }, 'assinado no tópico MQTT')
+        fastify.log.info({ topics: [TOPIC, STATUS_TOPIC] }, 'assinado nos tópicos MQTT')
       })
     })
 
@@ -51,20 +62,69 @@ export default fp(
       fastify.log.error({ err }, 'erro no cliente MQTT')
     })
 
-    client.on('message', (_topic, message) => {
+    client.on('message', (topic, message) => {
+      if (topic.startsWith(STATUS_PREFIX)) {
+        handleStatus(topic.slice(STATUS_PREFIX.length), message)
+        return
+      }
       handleMessage(message).catch((err) => {
         fastify.log.error({ err }, 'falha ao processar mensagem MQTT')
       })
     })
 
-    async function handleMessage(message: Buffer) {
-      let json: unknown
+    function parseJson(message: Buffer): unknown {
       try {
-        json = JSON.parse(message.toString())
+        return JSON.parse(message.toString())
       } catch {
         fastify.log.warn('payload MQTT descartado: JSON inválido')
+        return undefined
+      }
+    }
+
+    const statusCameras = new Map<string, StatusCamera>()
+
+    function statusEvento({ payload, recebidoEm }: StatusCamera) {
+      return {
+        camera_id: payload.camera_id,
+        estado: payload.estado,
+        modelo: payload.modelo,
+        fps: payload.fps,
+        ultimo_sinal: new Date(payload.timestamp).toISOString(),
+        // Calculada no envio: o cliente não depende do relógio do dispositivo
+        idade_s: Math.floor((Date.now() - recebidoEm) / 1000),
+      }
+    }
+
+    function handleStatus(cameraTopico: string, message: Buffer) {
+      // Mensagem vazia limpa o status retido no broker: nada a repassar
+      if (message.length === 0) return
+
+      const json = parseJson(message)
+      if (json === undefined) return
+
+      const parsed = StatusPayloadSchema.safeParse(json)
+      if (!parsed.success) {
+        fastify.log.warn({ issues: parsed.error.issues }, 'status MQTT descartado: schema inválido')
         return
       }
+      if (parsed.data.camera_id !== cameraTopico) {
+        fastify.log.warn(
+          { topico: cameraTopico, camera_id: parsed.data.camera_id },
+          'status MQTT descartado: camera_id difere do tópico',
+        )
+        return
+      }
+
+      const status = { payload: parsed.data, recebidoEm: Date.now() }
+      statusCameras.set(parsed.data.camera_id, status)
+      fastify.broadcast('status', statusEvento(status))
+    }
+
+    fastify.addSnapshot('status', () => [...statusCameras.values()].map(statusEvento))
+
+    async function handleMessage(message: Buffer) {
+      const json = parseJson(message)
+      if (json === undefined) return
 
       const parsed = MqttPayloadSchema.safeParse(json)
       if (!parsed.success) {
@@ -121,5 +181,5 @@ export default fp(
       await client.endAsync()
     })
   },
-  { decorators: { fastify: ['db', 'broadcast'] } },
+  { decorators: { fastify: ['db', 'broadcast', 'addSnapshot'] } },
 )

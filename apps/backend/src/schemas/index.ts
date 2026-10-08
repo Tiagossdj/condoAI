@@ -57,6 +57,17 @@ export const MqttPayloadSchema = z.object({
 
 export type MqttPayload = z.infer<typeof MqttPayloadSchema>
 
+// Sinal de vida da câmera em condoai/status/<camera_id> (spec 4.7)
+export const StatusPayloadSchema = z.object({
+  camera_id: z.string().min(1).max(50),
+  timestamp: z.iso.datetime({ offset: true }),
+  estado: z.enum(['online', 'offline']),
+  modelo: z.string(),
+  fps: z.number().min(0).nullable(),
+})
+
+export type StatusPayload = z.infer<typeof StatusPayloadSchema>
+
 const BboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()])
 
 // Resposta do serviço de inferência (spec 4.5)

@@ -275,9 +275,22 @@
     descartado); cliente WebSocket recebe snapshot + `online` + `offline` do `main.py`
     real; `tsc` e `eslint` sem erros no web
 
-- [ ] **T27** — Demonstração em campo com câmera IP fixa
+- [ ] **T27** — Filtros de campo: área monitorada e confirmação por proporção
   - Dependência: T26 concluída
+  - Motivo: vídeo de campo (8 s) com o v2 detectou o saco em 100% dos frames,
+    mas uma tomada virou `papelao` (26% dos frames) e gerou uma ocorrência falsa
+  - `Ocorrencias`: confirmação com ≥ 70% dos frames numa janela móvel de 1 s (spec 4.4)
+  - `main.py`: `--area` (ponto de apoio dentro do retângulo), `--definir-area`;
+    preview com a área e detecções fora dela marcadas (spec 4.6 e 4.8)
+  - **Commit:** `feat(inference): filtrar detecções por área monitorada e proporção de frames`
+  - **Evidência:** testes da lógica de ocorrências (incluindo 26% → nenhuma,
+    100% e 75% → uma); vídeo de campo: 2 → 1 ocorrência só com a proporção;
+    com a área no chão, a tomada aparece como `fora da area`
+
+- [ ] **T28** — Demonstração em campo com câmera IP fixa
+  - Dependência: T27 concluída
   - Validar stream do DroidCam no `--source` (`http://<ip>:4747/video`)
+  - Definir a área monitorada com `--definir-area` no local (spec 4.8)
   - Rede: hotspot do celular; perfil Privado; regras de firewall para 3000/3001 (spec 11)
   - Sessão contínua com a câmera fixa na área monitorada e o dashboard aberto
     em outro aparelho

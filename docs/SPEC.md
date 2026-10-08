@@ -123,6 +123,9 @@ ser substituída ou escalada independentemente.
   as ocorrências (4.4) são controladas por classe
 - Duração das ocorrências no banco (início e fim persistidos); hoje a
   duração aparece só no `--preview` (4.6)
+- Área monitorada por câmera persistida no cadastro da câmera (ex.: coluna
+  em `cameras`), em vez do argumento `--area` (4.8): com várias câmeras,
+  cada enquadramento define onde a detecção vale
 
 ---
 
@@ -297,9 +300,10 @@ ele estiver no local. Publicar por frame, ou a cada N segundos, gravaria
 centenas de linhas para um único descarte. O `main.py` registra
 **ocorrências**: cada classe tem um estado `ausente` ou `presente`.
 
-1. **Confirmação:** a classe precisa ser vista de forma contínua por
-   ≥ 1 s (lacunas de até 0,5 s entre frames são toleradas). Falsos
-   positivos de poucos frames não viram ocorrência
+1. **Confirmação:** a classe precisa aparecer em **≥ 70% dos frames**
+   de uma janela móvel de **1 s**; uma lacuna > 0,5 s sem vê-la reinicia
+   a contagem. Falsos positivos intermitentes (ex.: uma tomada vista como
+   `papelao` em 26% dos frames) não viram ocorrência
 2. **Publicação:** na confirmação, a classe passa a `presente` e **uma**
    mensagem é publicada em `condoai/deteccoes` (payload 4.2), com a
    maior confiança vista até ali. É a única linha gravada no banco
@@ -364,7 +368,9 @@ python main.py --source 0 --preview --gravar demo.mp4   # janela + vídeo anotad
   confirmada (4.4), o rótulo mostra há quanto tempo a classe está
   presente (ex.: `saco_lixo 0.87 - 2m13s`); por 1 s após a publicação
   MQTT, a caixa fica grossa e o rótulo ganha o sufixo `MQTT`. O rodapé
-  mostra versão do modelo, FPS do loop e tempo de inferência. `q`, `ESC`
+  mostra versão do modelo, FPS do loop e tempo de inferência. Com
+  `--area` (4.8), a área monitorada aparece como retângulo e as detecções
+  fora dela ficam cinza, finas e com o rótulo `fora da area`. `q`, `ESC`
   ou fechar a janela encerra o serviço
 - `--gravar <arquivo.mp4>`: salva o vídeo anotado (exige `--preview`).
   Com arquivo de vídeo como fonte, usa o FPS da fonte; com câmera, mede o
@@ -401,6 +407,28 @@ monitorando. O `main.py` publica o estado da câmera em
   payloads cujo `camera_id` difere do sufixo do tópico
 - Validação Zod no backend (2.5); payload inválido é descartado com log
 - Não é persistido: o banco guarda ocorrências, não sinais de vida
+
+### 4.8 Área monitorada (`--area`)
+
+Uma câmera fixa enquadra mais do que o ponto de descarte (paredes,
+tomadas, portas). Objetos fixos fora desse ponto podem gerar falsos
+positivos permanentes. O `main.py` aceita uma área monitorada:
+
+```
+python main.py --source <fonte> --definir-area           # marca a área com o mouse e imprime o --area
+python main.py --source <fonte> --area 0,0.45,1,1 --preview
+```
+
+- `--area x1,y1,x2,y2`: retângulo em coordenadas **relativas ao quadro**
+  (0 a 1), independente da resolução. Sem o argumento, a área é o
+  quadro inteiro
+- Uma detecção vale se o seu **ponto de apoio** (centro da borda inferior
+  da caixa, onde o objeto toca o chão) está dentro da área. Detecções
+  fora dela são descartadas antes do controle de ocorrências (4.4)
+- `--definir-area`: abre o primeiro frame da fonte, o usuário arrasta um
+  retângulo e o programa imprime o `--area` correspondente e encerra
+- Só no loop contínuo (`main.py`); o `POST /predict` (4.5) e o `/scan`
+  (8.4) não usam área: a foto é de perto e não há cena fixa
 
 ---
 
@@ -795,6 +823,8 @@ local (RNF03): sem internet, sem deploy.
   `python main.py --source http://<ip-do-celular>:4747/video --preview`.
   A versão gratuita do DroidCam aceita um cliente por vez; o cliente do
   DroidCam no PC precisa estar fechado
+- **Instalação:** com a câmera já fixada, marcar o ponto de descarte com
+  `--definir-area` e iniciar o monitoramento com o `--area` impresso (4.8)
 - **Nó de borda:** o notebook processa o vídeo localmente (edge
   computing). Na rede trafegam apenas eventos JSON (4.2 e 4.7); nenhuma
   imagem sai do nó de inferência (seção 5)

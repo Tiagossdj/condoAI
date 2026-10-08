@@ -45,6 +45,57 @@ export const EstatisticasSchema = z.object({
   por_classe: z.array(z.object({ classe: ClasseNomeSchema, total: z.number().int().min(0) })),
 })
 
+// Resposta do GET /painel (spec 7.1): agregados do dashboard analítico
+export const PERIODOS = ['24h', '7d', '30d'] as const
+export type Periodo = (typeof PERIODOS)[number]
+
+const PorClasseNumSchema = z.object({
+  saco_lixo: z.number().int().min(0),
+  garrafa_pet: z.number().int().min(0),
+  papelao: z.number().int().min(0),
+  lixo_generico: z.number().int().min(0),
+})
+
+export const PainelSchema = z.object({
+  periodo: z.enum(PERIODOS),
+  de: z.string(),
+  ate: z.string(),
+  intervalo: z.enum(['hora', 'dia']),
+  indicadores: z.object({
+    total_periodo: z.number().int().min(0),
+    hoje: z.number().int().min(0),
+    ontem: z.number().int().min(0),
+    total_geral: z.number().int().min(0),
+    confianca_media: z.number().nullable(),
+    latencia_ms: z.object({ p50: z.number(), p95: z.number(), max: z.number() }).nullable(),
+  }),
+  serie: z.array(PorClasseNumSchema.extend({ inicio: z.string() })),
+  heatmap_30d: z.array(
+    z.object({ dia_semana: z.number().int(), hora: z.number().int(), total: z.number().int() }),
+  ),
+  por_classe: z.array(
+    z.object({
+      classe: ClasseNomeSchema,
+      total: z.number().int().min(0),
+      confianca_media: z.number().nullable(),
+    }),
+  ),
+  por_camera: z.array(
+    z.object({
+      camera_id: z.string(),
+      localizacao: z.string(),
+      total: z.number().int().min(0),
+      ultima: z.string().nullable(),
+    }),
+  ),
+  latencia_hist: z.array(
+    z.object({ de_ms: z.number().int(), ate_ms: z.number().int().nullable(), total: z.number().int() }),
+  ),
+  confianca_hist: z.array(PorClasseNumSchema.extend({ faixa: z.string() })),
+})
+
+export type Painel = z.infer<typeof PainelSchema>
+
 export type Estatisticas = z.infer<typeof EstatisticasSchema>
 export type ClasseNome = z.infer<typeof ClasseNomeSchema>
 export type ScanResponse = z.infer<typeof ScanResponseSchema>
@@ -58,6 +109,7 @@ export type DeteccoesParams = {
   cursor?: string
   camera_id?: string
   classe?: string
+  de?: string
 }
 
 // Sem NEXT_PUBLIC_API_URL, usa o mesmo host da página na porta 3001: no celular
@@ -100,6 +152,10 @@ export function getClasses(): Promise<Classe[]> {
 
 export function getEstatisticas(): Promise<Estatisticas> {
   return request('/estatisticas', EstatisticasSchema)
+}
+
+export function getPainel(periodo: Periodo): Promise<Painel> {
+  return request(`/painel?periodo=${periodo}`, PainelSchema)
 }
 
 const ErrorBodySchema = z.object({ error: z.string() })

@@ -292,7 +292,7 @@
     a tomada sai como `papelao - fora da area` e o `main.py` gravou 1 linha
     em `deteccoes` (`saco_lixo` 0,881)
 
-- [ ] **T28** — Dashboard analítico
+- [x] **T28** — Dashboard analítico
   - Dependência: T27 concluída
   - Backend: `GET /painel?periodo=24h|7d|30d` (spec 7.1), agregados no fuso
     `America/Sao_Paulo`; parâmetro `de` em `GET /deteccoes`
@@ -305,6 +305,13 @@
   - **Evidência:** smoke test do `/painel` (totais iguais à contagem direta no
     banco; agrupamento por hora no fuso local); `tsc`, `eslint` e build do web;
     conferência visual no navegador
+  - **Resultado:** smoke test do backend 4/4 (inclui `/painel` nos 3 períodos:
+    totais iguais à contagem no banco, blocos somando o total do período, série
+    alinhada à hora/dia local, `?de=` no `/deteccoes`, período inválido → 400);
+    `tsc`, `eslint` e `next build` sem erros; capturas em 1280 px e 390 px sem
+    rolagem horizontal. Paleta das classes validada (contraste e daltonismo) sobre
+    a superfície dos cards. Faixas de latência passaram a ter largura crescente
+    (spec 7.1): faixas de 10 ms geravam centenas de barras com as latências do `/scan`
 
 - [ ] **T29** — Demonstração em campo com câmera IP fixa
   - Dependência: T28 concluída

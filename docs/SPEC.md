@@ -325,6 +325,28 @@ frame: <imagem JPEG/PNG>
 - Imagem ilegível → `400 { "error": "imagem inválida" }`
 - O frame existe apenas em memória durante a requisição; nunca é salvo
 
+### 4.6 Visualização local (`--preview`) e gravação (`--gravar`)
+
+Para demonstrar o modelo funcionando, `main.py` tem dois argumentos
+opcionais. Sem eles o loop roda sem janela e sem custo extra.
+
+```
+python main.py --source 0 --preview                     # janela ao vivo
+python main.py --source 0 --preview --gravar demo.mp4   # janela + vídeo anotado
+```
+
+- `--preview`: abre uma janela OpenCV com, por detecção, bounding box e
+  rótulo `classe confiança` (uma cor por classe). Por 1 s após uma
+  publicação MQTT, a caixa fica grossa e o rótulo ganha o sufixo `MQTT`,
+  mostrando o cooldown (4.4) em ação. O rodapé mostra versão do modelo,
+  FPS do loop e tempo de inferência. `q`, `ESC` ou fechar a janela encerra
+  o serviço
+- `--gravar <arquivo.mp4>`: salva o vídeo anotado (exige `--preview`).
+  Com arquivo de vídeo como fonte, usa o FPS da fonte; com câmera, mede o
+  FPS real do loop nos primeiros 30 frames, para o vídeo não sair acelerado
+- A publicação MQTT é idêntica com ou sem preview
+- Vídeos gravados ficam fora do git (`*.mp4` no `.gitignore`)
+
 ---
 
 ## 5. LGPD e privacidade
@@ -341,7 +363,11 @@ Implementação:
   difira de `CLASSES[id]` em `config.py` (defesa contra modelos
   pré-treinados — no COCO, por exemplo, o índice 0 é `person`, então o
   filtro só por índice não bastaria)
-- Nenhum frame capturado é salvo em disco
+- Nenhum frame capturado é salvo em disco, com uma exceção explícita:
+  `--gravar` (4.6), desligado por padrão e usado só para demonstração.
+  O vídeo contém os frames brutos da câmera, que podem incluir pessoas;
+  gravar apenas em ambiente controlado, com ciência dos presentes, e
+  descartar o arquivo após o uso. O `--preview` só exibe na tela local
 
 ---
 

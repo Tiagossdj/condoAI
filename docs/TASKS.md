@@ -226,8 +226,11 @@
     validação satura entre as épocas 40 e 60. v2 segue em produção.
     Detalhes em `models/v3/metricas.md`
 
-- [ ] **T24** — Monitoramento contínuo com visualização das detecções
+- [x] **T24** — Monitoramento contínuo com visualização das detecções
   - Dependência: T23 concluída (modelo com bounding boxes confiáveis)
-  - Abordagem a definir antes de iniciar: janela local no `main.py`
-    (`--preview`) ou vídeo ao vivo no navegador (altera spec 8.4)
+  - Abordagem escolhida: janela local no `main.py` (`--preview`), com gravação
+    opcional do vídeo anotado (`--gravar`) para demonstração (spec 4.6 e 5)
   - **Evidência:** vídeo com detecções e bounding boxes sobre o objeto
+  - **Resultado:** vídeo de teste (20 imagens do split de teste, 30 s) gravado
+    com caixas, rótulos e destaque `MQTT`; ~32 fps, inferência 15–27 ms;
+    24 publicações → 24 linhas em `deteccoes` com o backend no ar

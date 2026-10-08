@@ -158,5 +158,8 @@ venv/
 *.pt
 runs/
 
+# Vídeos gravados com main.py --gravar (podem conter pessoas; spec 5)
+*.mp4
+
 # Datasets de treino (export Roboflow, grande demais para o git)
 apps/inference/datasets/

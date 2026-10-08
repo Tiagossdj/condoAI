@@ -156,6 +156,7 @@ Não crie pastas fora dessa estrutura sem aprovação.
 | TypeScript (backend) | 7.x | linguagem fixa do backend (strict mode) |
 | TypeScript (frontend) | 5.9.x | Next.js 15 exige a API JS clássica do pacote `typescript`, ausente no 7.x (strict mode) |
 | tsx | 4.x | execução direta de TypeScript em dev (sem build) |
+| recharts | 3.x | gráficos do dashboard, via componente `chart` do shadcn |
 | @types/node | 24.x | tipos alinhados ao Node.js 24 LTS |
 | Docker / Docker Compose | estável atual | PostgreSQL e Mosquitto em dev local |
 

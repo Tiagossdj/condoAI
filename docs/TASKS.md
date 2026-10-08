@@ -292,8 +292,26 @@
     a tomada sai como `papelao - fora da area` e o `main.py` gravou 1 linha
     em `deteccoes` (`saco_lixo` 0,881)
 
-- [ ] **T28** — Demonstração em campo com câmera IP fixa
+- [ ] **T28** — Dashboard analítico
   - Dependência: T27 concluída
+  - Backend: `GET /painel?periodo=24h|7d|30d` (spec 7.1), agregados no fuso
+    `America/Sao_Paulo`; parâmetro `de` em `GET /deteccoes`
+  - Web: Recharts via `chart` do shadcn; blocos `Indicadores`, `LinhaDoTempo`,
+    `MapaDeCalor`, `PorClasse`, `PorCamera`, `Latencia`, `Confianca`, `Modelo`;
+    seletor de período; filtros no feed; recarrega a cada evento `deteccao` (spec 8.2)
+  - **Commits:** `chore(web): adicionar recharts via componente chart do shadcn`;
+    `feat(backend): adicionar GET /painel com agregados do dashboard`;
+    `feat(web): ampliar dashboard com indicadores, séries e distribuições`
+  - **Evidência:** smoke test do `/painel` (totais iguais à contagem direta no
+    banco; agrupamento por hora no fuso local); `tsc`, `eslint` e build do web;
+    conferência visual no navegador
+
+- [ ] **T29** — Demonstração em campo com câmera IP fixa
+  - Dependência: T28 concluída
+  - Câmera `cam_entrada` (local `entrada_garagem`) cadastrada em `cameras`;
+    `main.py` com `CAMERA_ID=cam_entrada` (spec 11)
+  - Antes da sessão: apagar as detecções de teste da `cam_test` (confirmação
+    explícita na hora)
   - Validar stream do DroidCam no `--source` (`http://<ip>:4747/video`)
   - Definir a área monitorada com `--definir-area` no local (spec 4.8)
   - Rede: hotspot do celular; perfil Privado; regras de firewall para 3000/3001 (spec 11)

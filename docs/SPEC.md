@@ -553,13 +553,17 @@ O serviço de inferência carrega `models/<MODEL_VERSION>/best.pt`
 | GET | `/classes` | Lista classes disponíveis |
 | GET | `/health` | Health check do serviço |
 | GET | `/estatisticas` | Total de detecções e contagem por classe |
+| GET | `/painel` | Agregados do dashboard analítico (abaixo) |
 | POST | `/scan` | Captura via frontend (seção 8.4) |
 
 **Query params de `/deteccoes`:**
 
 ```
-?limite=50&cursor=<timestamp_ISO>&camera_id=cam_hall&classe=saco_lixo
+?limite=50&cursor=<timestamp_ISO>&camera_id=cam_hall&classe=saco_lixo&de=<timestamp_ISO>
 ```
+
+`de` (opcional): só detecções com `timestamp >= de` (filtro de período do
+feed no dashboard).
 
 **Resposta padrão de `/deteccoes`:**
 
@@ -600,6 +604,56 @@ seção 3.2. Usada pelo `StatsBar` do dashboard: a paginação de
 `ultimo_id` é o maior `id` contado (ou `null` sem detecções): o dashboard
 só incrementa a contagem com eventos WebSocket de `id` maior, evitando
 contar duas vezes uma detecção que chegou durante a requisição.
+
+**`GET /painel?periodo=24h|7d|30d`** (padrão `24h`): agregados do
+dashboard analítico (8.2) numa única chamada. Agrupamentos por hora/dia
+no fuso **`America/Sao_Paulo`**, para "hoje" e as horas baterem com o
+relógio local.
+
+```json
+{
+  "periodo": "24h",
+  "de": "2026-10-07T18:00:00.000Z",
+  "ate": "2026-10-08T18:00:00.000Z",
+  "intervalo": "hora",
+  "indicadores": {
+    "total_periodo": 12,
+    "hoje": 5,
+    "ontem": 3,
+    "total_geral": 40,
+    "confianca_media": 0.78,
+    "latencia_ms": { "p50": 14, "p95": 31, "max": 52 }
+  },
+  "serie": [
+    { "inicio": "2026-10-08T17:00:00.000Z", "saco_lixo": 2, "garrafa_pet": 0, "papelao": 1, "lixo_generico": 0 }
+  ],
+  "heatmap_30d": [ { "dia_semana": 0, "hora": 21, "total": 4 } ],
+  "por_classe": [ { "classe": "saco_lixo", "total": 7, "confianca_media": 0.81 } ],
+  "por_camera": [
+    { "camera_id": "cam_entrada", "localizacao": "entrada_garagem", "total": 9, "ultima": "2026-10-08T17:42:00.000Z" }
+  ],
+  "latencia_hist": [ { "de_ms": 0, "ate_ms": 10, "total": 3 } ],
+  "confianca_hist": [
+    { "faixa": "0.4-0.5", "saco_lixo": 1, "garrafa_pet": 0, "papelao": 2, "lixo_generico": 0 }
+  ]
+}
+```
+
+- `intervalo`: `hora` para `24h`, `dia` para `7d` e `30d`. `serie` traz
+  todos os intervalos do período, inclusive os com zero
+- `hoje` / `ontem`: dias de calendário no fuso local, independentes do
+  período; `total_geral`: todas as detecções
+- `latencia_ms`: percentis de `latencia_ms` (captura do frame →
+  publicação MQTT, 4.2) no período; `null` sem detecções. **Não** é a
+  latência total da H2 (1.5), que inclui backend e dashboard
+- `heatmap_30d`: sempre os últimos 30 dias; `dia_semana` 0 = domingo;
+  só células com total > 0
+- `por_classe`: as 4 classes, na ordem da seção 3.2, inclusive com zero
+- `por_camera`: câmeras ativas, inclusive sem detecções (`ultima: null`)
+- `latencia_hist`: faixas de 10 ms; `confianca_hist`: faixas de 0,1 entre
+  0,4 (threshold, 4.3) e 1,0
+- O estado online/offline das câmeras não vem daqui: vem dos eventos
+  `status` do WebSocket (7.2)
 
 ### 7.2 WebSocket (mesmo servidor, porta 3001)
 
@@ -694,12 +748,32 @@ por câmera conhecida (o snapshot atual):
 #### Tela 3 — Dashboard (`/dashboard`)
 
 - Conecta via WebSocket em `ws://localhost:3001/ws`
-- Exibe feed em tempo real de detecções
+- Seletor de período (24 h / 7 dias / 30 dias) aplicado aos blocos
+  analíticos, alimentados por `GET /painel` (7.1); a cada evento
+  `deteccao` o painel é recarregado (eventos próximos agrupados num único
+  recarregamento)
+- Blocos analíticos (gráficos com Recharts, via componente `chart` do
+  shadcn):
+  - `Indicadores`: ocorrências hoje (vs. ontem), no período e total;
+    câmeras online (x de y, dos eventos `status`); latência mediana e p95;
+    confiança média
+  - `LinhaDoTempo`: ocorrências por hora (24 h) ou por dia (7/30 dias),
+    empilhadas por classe
+  - `MapaDeCalor`: dia da semana × hora, últimos 30 dias (horários críticos)
+  - `PorClasse`: quantidade e percentual por classe
+  - `PorCamera`: câmera, local, estado, ocorrências no período, última
+    ocorrência
+  - `Latencia`: distribuição de `latencia_ms` (captura → publicação) com a
+    meta de 3 s como referência
+  - `Confianca`: distribuição da confiança por classe
+  - `Modelo`: versão em produção (do `status` da câmera) e mAP@50 no
+    teste da versão (`models/<versão>/metricas.md`)
 - `StatsBar`: contagem por classe — total inicial via `GET /estatisticas`,
   incrementado a cada evento `deteccao` do WebSocket
 - `DetectionFeed`: lista de detecções com timestamp, câmera, classe, confiança
   — histórico inicial via `GET /deteccoes`, eventos novos no topo,
-  deduplicados por `id`
+  deduplicados por `id`; filtros de classe, câmera e período
+  (`classe`, `camera_id`, `de`)
 - `CameraStatus`: um indicador por câmera, a partir dos eventos `status`
   (7.2): "cam_hall · monitorando · último sinal há 3 s" (atualizado a
   cada segundo no cliente). Mostra **offline** quando `estado` é
@@ -717,14 +791,22 @@ apps/web/
 │   └── dashboard/
 │       └── page.tsx           ← Dashboard em tempo real
 ├── components/
-│   ├── ui/                    ← componentes base (button, card, badge)
+│   ├── ui/                    ← componentes base (button, card, badge, chart)
 │   ├── camera/
 │   │   ├── CameraView.tsx     ← acessa câmera via getUserMedia
 │   │   └── ResultCard.tsx     ← exibe resultado da inferência
 │   └── dashboard/
 │       ├── DetectionFeed.tsx  ← lista tempo real via WebSocket
 │       ├── StatsBar.tsx       ← contagem por classe
-│       └── CameraStatus.tsx   ← sinal de vida das câmeras (4.7)
+│       ├── CameraStatus.tsx   ← sinal de vida das câmeras (4.7)
+│       ├── Indicadores.tsx    ← KPIs do período (GET /painel)
+│       ├── LinhaDoTempo.tsx   ← série por hora/dia, empilhada por classe
+│       ├── MapaDeCalor.tsx    ← dia da semana × hora (30 dias)
+│       ├── PorClasse.tsx      ← quantidade e % por classe
+│       ├── PorCamera.tsx      ← tabela por câmera/local
+│       ├── Latencia.tsx       ← distribuição captura → publicação
+│       ├── Confianca.tsx      ← distribuição da confiança por classe
+│       └── Modelo.tsx         ← versão e mAP@50 do modelo
 ├── lib/
 │   ├── api.ts                 ← fetch para o backend REST
 │   └── websocket.ts           ← hook useWebSocket
@@ -823,8 +905,11 @@ local (RNF03): sem internet, sem deploy.
   `python main.py --source http://<ip-do-celular>:4747/video --preview`.
   A versão gratuita do DroidCam aceita um cliente por vez; o cliente do
   DroidCam no PC precisa estar fechado
-- **Instalação:** com a câmera já fixada, marcar o ponto de descarte com
-  `--definir-area` e iniciar o monitoramento com o `--area` impresso (4.8)
+- **Instalação:** cadastrar a câmera na tabela `cameras` (ex.:
+  `cam_entrada`, local `entrada_garagem`) e rodar o `main.py` com
+  `CAMERA_ID` e `LOCALIZACAO` correspondentes; com a câmera já fixada,
+  marcar o ponto de descarte com `--definir-area` e iniciar o
+  monitoramento com o `--area` impresso (4.8)
 - **Nó de borda:** o notebook processa o vídeo localmente (edge
   computing). Na rede trafegam apenas eventos JSON (4.2 e 4.7); nenhuma
   imagem sai do nó de inferência (seção 5)

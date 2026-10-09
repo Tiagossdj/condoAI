@@ -630,7 +630,7 @@ relógio local.
   "heatmap_30d": [ { "dia_semana": 0, "hora": 21, "total": 4 } ],
   "por_classe": [ { "classe": "saco_lixo", "total": 7, "confianca_media": 0.81 } ],
   "por_camera": [
-    { "camera_id": "cam_entrada", "localizacao": "entrada_garagem", "total": 9, "ultima": "2026-10-08T17:42:00.000Z" }
+    { "camera_id": "cam_corredor_a", "localizacao": "corredor_A", "total": 9, "ultima": "2026-10-08T17:42:00.000Z" }
   ],
   "latencia_hist": [ { "de_ms": 10, "ate_ms": 20, "total": 3 }, { "de_ms": 3000, "ate_ms": null, "total": 0 } ],
   "confianca_hist": [
@@ -914,7 +914,7 @@ local (RNF03): sem internet, sem deploy.
   A versão gratuita do DroidCam aceita um cliente por vez; o cliente do
   DroidCam no PC precisa estar fechado
 - **Instalação:** cadastrar a câmera na tabela `cameras` (ex.:
-  `cam_entrada`, local `entrada_garagem`) e rodar o `main.py` com
+  `cam_corredor_a`, local `corredor_A`) e rodar o `main.py` com
   `CAMERA_ID` e `LOCALIZACAO` correspondentes; com a câmera já fixada,
   marcar o ponto de descarte com `--definir-area` e iniciar o
   monitoramento com o `--area` impresso (4.8)

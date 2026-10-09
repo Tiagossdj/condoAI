@@ -315,8 +315,9 @@
 
 - [ ] **T29** — Demonstração em campo com câmera IP fixa
   - Dependência: T28 concluída
-  - Câmera `cam_corredor_a` (local `corredor_A`) cadastrada em `cameras`;
-    `main.py` com `CAMERA_ID=cam_corredor_a` (spec 11)
+  - Dois locais, uma câmera cadastrada em `cameras` para cada: `cam_corredor_a`
+    (local `corredor_A`) e `cam_entrada` (local `entrada_garagem`); `main.py`
+    com o `CAMERA_ID` e a `LOCALIZACAO` do local da sessão (spec 11)
   - Antes da sessão: apagar as detecções de teste da `cam_test` (confirmação
     explícita na hora)
   - Validar stream do DroidCam no `--source` (`http://<ip>:4747/video`)

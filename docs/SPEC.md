@@ -913,9 +913,10 @@ local (RNF03): sem internet, sem deploy.
   `python main.py --source http://<ip-do-celular>:4747/video --preview`.
   A versão gratuita do DroidCam aceita um cliente por vez; o cliente do
   DroidCam no PC precisa estar fechado
-- **Instalação:** cadastrar a câmera na tabela `cameras` (ex.:
-  `cam_corredor_a`, local `corredor_A`) e rodar o `main.py` com
-  `CAMERA_ID` e `LOCALIZACAO` correspondentes; com a câmera já fixada,
+- **Instalação:** a demonstração usa dois locais, cada um com sua
+  câmera na tabela `cameras`: `cam_corredor_a` (local `corredor_A`) e
+  `cam_entrada` (local `entrada_garagem`). Em cada local, rodar o
+  `main.py` com `CAMERA_ID` e `LOCALIZACAO` correspondentes; com a câmera já fixada,
   marcar o ponto de descarte com `--definir-area` e iniciar o
   monitoramento com o `--area` impresso (4.8)
 - **Nó de borda:** o notebook processa o vídeo localmente (edge

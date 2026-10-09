@@ -928,6 +928,11 @@ local (RNF03): sem internet, sem deploy.
 - **Rede sem Wi-Fi no local:** roteador (hotspot) de um celular; não
   precisa de dados móveis. Notebook, câmera e aparelho da banca entram
   na mesma rede
+- **Câmera fora da rede:** se o celular da câmera não puder entrar no
+  Wi-Fi (ex.: ele próprio é o hotspot, e o DroidCam exige Wi-Fi), gravar
+  o local e processar o arquivo depois com `--source <arquivo>`; o
+  caminho até o dashboard é o mesmo, mas o `timestamp` das detecções é o
+  do processamento, não o da gravação
 - **Firewall do Windows:** marcar a rede como **Privada** e liberar
   entrada TCP nas portas `3000` e `3001` só no perfil Privado (PowerShell
   como administrador). A porta `1883` só precisa ser liberada se o

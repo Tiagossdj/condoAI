@@ -313,7 +313,7 @@
     a superfície dos cards. Faixas de latência passaram a ter largura crescente
     (spec 7.1): faixas de 10 ms geravam centenas de barras com as latências do `/scan`
 
-- [ ] **T29** — Demonstração em campo com câmera IP fixa
+- [x] **T29** — Demonstração em campo com câmera IP fixa
   - Dependência: T28 concluída
   - Dois locais, uma câmera cadastrada em `cameras` para cada: `cam_corredor_a`
     (local `corredor_A`) e `cam_entrada` (local `entrada_garagem`); `main.py`
@@ -329,3 +329,18 @@
   - **Evidência:** sessão de ≥ 1 h; ocorrências e estado da câmera no dashboard
     acessado por outro aparelho; contagem de linhas no banco compatível com os
     descartes encenados
+  - **Resultado:** corredor (`cam_corredor_a`): sessão ao vivo com câmera IP
+    (DroidCam), cerca de 21 min de detecções (12:16–12:37); 11 ocorrências
+    (saco_lixo 4, garrafa_pet 3, lixo_generico 2, papelao 2), confiança média
+    0,766, latência média 25 ms; dashboard acompanhado em outro aparelho pela
+    LAN. Foram usados menos de 11 objetos: parte deles foi retirada e recolocada
+    depois da janela de ausência (30 s), de propósito, para mostrar que a
+    ocorrência se encerra e o mesmo objeto é registrado de novo (spec 4.4).
+    Entrada da garagem (`cam_entrada`): sem um segundo aparelho para o hotspot,
+    o DroidCam não funcionou com o iPhone sendo o próprio roteador; o local foi
+    gravado (8 min 29 s, 1024×576, 30 fps) e o vídeo processado depois pelo
+    `main.py` (`--source <arquivo>`), pelo mesmo caminho MQTT → backend → banco
+    → dashboard; 3 objetos encenados (papelão, garrafa, saco) → 3 ocorrências
+    com as classes corretas, confiança 0,854–0,878. Desvios: duração total
+    abaixo da 1 h prevista (limite de tempo no local); na garagem o timestamp é
+    o do processamento, não o da gravação

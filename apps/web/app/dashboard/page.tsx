@@ -6,7 +6,7 @@ import { Accent } from "@/components/landing/SectionHeading";
 
 export const metadata: Metadata = {
   title: "Painel — condoAI",
-  description: "Detecções de descarte irregular em tempo real, com contagem por classe.",
+  description: "Detecções de descarte em tempo real, com contagem por classe.",
 };
 
 export default function DashboardPage() {

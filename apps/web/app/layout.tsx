@@ -20,9 +20,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "condoAI — detecção de descarte irregular em condomínios",
+  title: "condoAI — detecção de descarte em condomínios",
   description:
-    "Sistema de detecção automática de descarte irregular de resíduos em áreas comuns de condomínios, com YOLOv8, MQTT e dashboard em tempo real. TCC de Ciência da Computação — UNIP 2026.",
+    "Sistema de detecção automática de descarte de resíduos em áreas comuns de condomínios, com YOLOv8, MQTT e dashboard em tempo real. TCC de Ciência da Computação — UNIP 2026.",
 };
 
 export default function RootLayout({

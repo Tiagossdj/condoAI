@@ -23,7 +23,7 @@ export function Hero() {
           </Badge>
 
           <h1 className="mt-6 text-4xl leading-[1.08] font-medium tracking-tight text-balance sm:text-5xl lg:text-6xl">
-            Detecção de <Accent>descarte irregular</Accent> de resíduos em condomínios.
+            Detecção de <Accent>descarte</Accent> de resíduos em condomínios.
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground">

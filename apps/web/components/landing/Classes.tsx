@@ -19,7 +19,7 @@ export function Classes() {
         <SectionHeading
           index="02"
           eyebrow="O que detecta"
-          description="O modelo é treinado com imagens dos datasets TACO e TrashBox, em quatro classes de resíduos."
+          description="O modelo é treinado com imagens dos datasets TACO, TrashNet++ e WasteInsight, em quatro classes de resíduos."
         >
           Quatro classes, <Accent>nada além</Accent>.
         </SectionHeading>

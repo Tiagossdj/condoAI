@@ -163,3 +163,6 @@ runs/
 
 # Datasets de treino (export Roboflow, grande demais para o git)
 apps/inference/datasets/
+
+# Documentos do TCC (entregas, roteiros e declaração)
+doctcc/

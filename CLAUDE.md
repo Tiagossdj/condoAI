@@ -8,7 +8,7 @@
 
 ## Identidade do projeto
 
-**condoAI** é um sistema de detecção automática de descarte irregular de
+**condoAI** é um sistema de detecção automática de descarte de
 resíduos sólidos em áreas comuns de condomínios residenciais. Integra
 YOLOv8 (inferência visual) com arquitetura IoT via MQTT e um dashboard web
 em tempo real.

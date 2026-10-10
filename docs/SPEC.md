@@ -12,7 +12,7 @@
 
 ### 1.1 Problema
 
-O descarte irregular de resíduos sólidos em áreas comuns de condomínios
+O descarte de resíduos sólidos em áreas comuns de condomínios
 residenciais é um problema recorrente de difícil monitoramento manual.
 Câmeras de segurança já instaladas nos condomínios capturam os eventos,
 mas exigem vigilância humana contínua para identificação das ocorrências.
@@ -20,7 +20,7 @@ mas exigem vigilância humana contínua para identificação das ocorrências.
 ### 1.2 Objetivo
 
 Desenvolver e avaliar um sistema de detecção automática de descarte
-irregular de resíduos utilizando o modelo YOLOv8 integrado a uma
+de resíduos utilizando o modelo YOLOv8 integrado a uma
 arquitetura IoT com broker MQTT e dashboard web em tempo real.
 
 O objetivo não é afirmar que o sistema "resolve o problema" ou "reduz
@@ -727,7 +727,7 @@ por câmera conhecida (o snapshot atual):
 #### Tela 1 — Landing page (`/`)
 
 - Nome: condoAI
-- O que é: sistema de detecção de descarte irregular em condomínios
+- O que é: sistema de detecção de descarte em condomínios
 - De onde surgiu: TCC UNIP Ciência da Computação 2026
 - O que faz: detecta resíduos descartados incorretamente via visão computacional
 - CTA: "Testar agora" → `/scan`

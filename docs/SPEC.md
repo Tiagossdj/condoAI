@@ -34,7 +34,7 @@ integrado com arquitetura IoT aplicado especificamente ao contexto
 condominial. Os benchmarks de referência são:
 
 - **Aguiar (2024, UFC):** YOLOv8m, classe única, mAP@50 = 65,9%
-- **Bawankule et al. (2024):** YOLOv8l, 4 classes, mAP@50 = 72%
+- **Espinosa-Juárez et al. (2025):** YOLOv8l, 4 classes, mAP@50 = 72%
 
 ### 1.4 Hipóteses de pesquisa
 

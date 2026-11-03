@@ -14,6 +14,8 @@ const SELECT_DETECCAO = `
     d.timestamp,
     d.confianca,
     d.latencia_ms,
+    d.fim,
+    d.resolvido_em,
     c.id   AS camera_id_pk,
     c.camera_id,
     c.localizacao,
@@ -29,6 +31,8 @@ type DeteccaoRow = {
   timestamp: Date
   confianca: string
   latencia_ms: number | null
+  fim: Date | null
+  resolvido_em: Date | null
   camera_id_pk: number
   camera_id: string
   localizacao: string
@@ -51,8 +55,17 @@ function toDeteccao(row: DeteccaoRow) {
     },
     confianca: Number(row.confianca),
     latencia_ms: row.latencia_ms,
+    fim: row.fim?.toISOString() ?? null,
+    resolvido_em: row.resolvido_em?.toISOString() ?? null,
   }
 }
+
+// Idempotente: COALESCE mantém a primeira confirmação (spec 7.1)
+const RESOLVER = `
+  UPDATE deteccoes SET resolvido_em = COALESCE(resolvido_em, NOW())
+  WHERE id = $1
+  RETURNING id
+`
 
 export default async function deteccoesRoutes(fastify: FastifyInstance) {
   fastify.withTypeProvider<ZodTypeProvider>().get(
@@ -133,6 +146,36 @@ export default async function deteccoesRoutes(fastify: FastifyInstance) {
       }
 
       return toDeteccao(row)
+    },
+  )
+
+  // Botão "Resolvido" do alerta ao gestor (spec 7.1 e 7.3). Sem corpo: um
+  // POST com Content-Type application/json e corpo vazio é recusado pelo Fastify
+  fastify.withTypeProvider<ZodTypeProvider>().post(
+    '/deteccoes/:id/resolver',
+    {
+      schema: {
+        params: DeteccaoIdParamsSchema,
+        response: {
+          200: DeteccaoSchema,
+          404: ErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const atualizada = await fastify.db.query(RESOLVER, [id])
+      if (atualizada.rowCount === 0) {
+        return reply.code(404).send({ error: 'detecção não encontrada' })
+      }
+
+      const result = await fastify.db.query<DeteccaoRow>(
+        `${SELECT_DETECCAO} WHERE d.id = $1`,
+        [id],
+      )
+      request.log.info({ id }, 'ocorrência resolvida pelo gestor')
+      return toDeteccao(result.rows[0]!)
     },
   )
 }

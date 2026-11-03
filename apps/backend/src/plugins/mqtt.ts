@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import mqtt from 'mqtt'
 import type { FastifyInstance } from 'fastify'
 import {
+  FimPayloadSchema,
   MqttPayloadSchema,
   StatusPayloadSchema,
   type MqttPayload,
@@ -12,6 +13,24 @@ const TOPIC = 'condoai/deteccoes'
 // Um tópico por câmera: o broker retém uma mensagem por tópico (spec 4.7)
 const STATUS_PREFIX = 'condoai/status/'
 const STATUS_TOPIC = `${STATUS_PREFIX}+`
+const FIM_TOPIC = 'condoai/ocorrencias/fim'
+
+// Fim vai para a ocorrência aberta mais recente do par (câmera, classe) que
+// começou antes dele: um fim atrasado não fecha uma ocorrência mais nova (spec 4.4)
+const UPDATE_FIM = `
+  UPDATE deteccoes SET fim = $1
+  WHERE id = (
+    SELECT d.id
+    FROM deteccoes d
+    JOIN cameras c ON c.id = d.camera_id
+    JOIN classes cl ON cl.id = d.classe_id
+    WHERE c.camera_id = $2 AND cl.nome = $3
+      AND d.fim IS NULL AND d.timestamp <= $1
+    ORDER BY d.timestamp DESC
+    LIMIT 1
+  )
+  RETURNING id
+`
 
 const INSERT_DETECCAO = `
   WITH ins AS (
@@ -49,12 +68,12 @@ export default fp(
     const client = mqtt.connect(`mqtt://${host}:${port}`, { reconnectPeriod: 1000 })
 
     client.on('connect', () => {
-      client.subscribe([TOPIC, STATUS_TOPIC], { qos: 1 }, (err) => {
+      client.subscribe([TOPIC, STATUS_TOPIC, FIM_TOPIC], { qos: 1 }, (err) => {
         if (err) {
           fastify.log.error({ err }, 'falha ao assinar tópico MQTT')
           return
         }
-        fastify.log.info({ topics: [TOPIC, STATUS_TOPIC] }, 'assinado nos tópicos MQTT')
+        fastify.log.info({ topics: [TOPIC, STATUS_TOPIC, FIM_TOPIC] }, 'assinado nos tópicos MQTT')
       })
     })
 
@@ -65,6 +84,12 @@ export default fp(
     client.on('message', (topic, message) => {
       if (topic.startsWith(STATUS_PREFIX)) {
         handleStatus(topic.slice(STATUS_PREFIX.length), message)
+        return
+      }
+      if (topic === FIM_TOPIC) {
+        handleFim(message).catch((err) => {
+          fastify.log.error({ err }, 'falha ao processar fim de ocorrência')
+        })
         return
       }
       handleMessage(message).catch((err) => {
@@ -133,6 +158,26 @@ export default fp(
       }
 
       await persistAndBroadcast(parsed.data)
+    }
+
+    async function handleFim(message: Buffer) {
+      const json = parseJson(message)
+      if (json === undefined) return
+
+      const parsed = FimPayloadSchema.safeParse(json)
+      if (!parsed.success) {
+        fastify.log.warn({ issues: parsed.error.issues }, 'fim MQTT descartado: schema inválido')
+        return
+      }
+
+      const { timestamp, camera_id, classe } = parsed.data
+      const result = await fastify.db.query<{ id: number }>(UPDATE_FIM, [timestamp, camera_id, classe])
+      const row = result.rows[0]
+      if (!row) {
+        fastify.log.warn({ camera_id, classe, timestamp }, 'fim MQTT descartado: nenhuma ocorrência aberta')
+        return
+      }
+      fastify.log.info({ id: row.id, camera_id, classe, fim: timestamp }, 'fim de ocorrência registrado')
     }
 
     async function persistAndBroadcast(payload: MqttPayload) {

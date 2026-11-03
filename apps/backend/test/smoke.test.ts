@@ -2,13 +2,19 @@
 // POST /scan → inferência → MQTT → subscriber → Postgres → WebSocket → GET /deteccoes.
 // Sinal de vida (T26): condoai/status/<camera_id> → backend → evento WebSocket "status" + snapshot.
 // Painel (T28): GET /painel confere com contagens diretas no banco e com o fuso local.
+// Fim e resolução (T31): condoai/ocorrencias/fim → deteccoes.fim; POST /deteccoes/:id/resolver.
 // Pré-requisitos: Docker (Postgres + Mosquitto), server.py (8000) e backend (3001) no ar.
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import pg from 'pg'
 import mqtt from 'mqtt'
-import { DeteccoesResponseSchema, PainelResponseSchema, ScanResponseSchema } from '../src/schemas/index.js'
+import {
+  DeteccaoSchema,
+  DeteccoesResponseSchema,
+  PainelResponseSchema,
+  ScanResponseSchema,
+} from '../src/schemas/index.js'
 
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3001'
 const CAMERA_ID = 'cam_test'
@@ -241,4 +247,86 @@ test('GET /painel: agregados batem com o banco e as horas seguem o fuso local', 
 
   // Período inválido → 400
   assert.equal((await fetch(`${BACKEND_URL}/painel?periodo=1h`)).status, 400)
+})
+
+test('fim e resolução: condoai/ocorrencias/fim → deteccoes.fim; POST /deteccoes/:id/resolver', async () => {
+  // Horários em 2020: longe das ocorrências reais da cam_test, que nunca casam com estes fins
+  const CLASSE = 'lixo_generico'
+  const em = (s: number) => new Date(Date.UTC(2020, 0, 1, 0, 0, s)).toISOString()
+  const client = await mqtt.connectAsync(MQTT_URL)
+
+  async function ocorrencia(timestamp: string): Promise<number> {
+    await client.publishAsync(
+      'condoai/deteccoes',
+      JSON.stringify({ timestamp, camera_id: CAMERA_ID, classe: CLASSE, confianca: 0.9, localizacao: 'smoke', latencia_ms: 1 }),
+      { qos: 1 },
+    )
+    const { id } = await aguardarEvento(timestamp)
+    idsCriados.push(id)
+    return id
+  }
+  const fim = (timestamp: string) =>
+    client.publishAsync('condoai/ocorrencias/fim', JSON.stringify({ timestamp, camera_id: CAMERA_ID, classe: CLASSE }), { qos: 1 })
+  async function fimNoBanco(id: number): Promise<string | null> {
+    const { rows } = await db.query<{ fim: Date | null }>('SELECT fim FROM deteccoes WHERE id = $1', [id])
+    return rows[0]?.fim?.toISOString() ?? null
+  }
+  async function aguardarFim(id: number, esperado: string) {
+    const limite = Date.now() + WS_TIMEOUT_MS
+    while (Date.now() < limite) {
+      if ((await fimNoBanco(id)) === esperado) return
+      await new Promise((r) => setTimeout(r, 20))
+    }
+    assert.fail(`fim ${esperado} não gravado na detecção ${id} (atual: ${await fimNoBanco(id)})`)
+  }
+  const pausa = () => new Promise((r) => setTimeout(r, 300))
+
+  try {
+    // 1. Ocorrência + fim: fim gravado na linha certa
+    const a = await ocorrencia(em(0))
+    await fim(em(5))
+    await aguardarFim(a, em(5))
+
+    // 2. Fim sem ocorrência aberta anterior a ele: nada muda
+    const { rows: antes } = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM deteccoes WHERE fim IS NOT NULL')
+    await fim(em(-3600))
+    await pausa()
+    const { rows: depois } = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM deteccoes WHERE fim IS NOT NULL')
+    assert.equal(depois[0]!.n, antes[0]!.n, 'fim sem ocorrência alterou alguma linha')
+
+    // 3. Duas abertas do mesmo par (órfã + nova): o fim vai para a mais recente
+    const orfa = await ocorrencia(em(100))
+    const nova = await ocorrencia(em(160))
+    await fim(em(170))
+    await aguardarFim(nova, em(170))
+    assert.equal(await fimNoBanco(orfa), null, 'a ocorrência mais antiga deveria continuar aberta')
+
+    // 4. Fim anterior ao início da única aberta: não é aplicado
+    const c = await ocorrencia(em(300))
+    await fim(em(250))
+    await pausa()
+    assert.equal(await fimNoBanco(c), null, 'fim anterior ao início foi aplicado')
+    // A regra é "aberta mais recente que começou antes do fim": aqui é a órfã (100 s)
+    assert.equal(await fimNoBanco(orfa), em(250))
+
+    // 5. POST /deteccoes/:id/resolver: 200, idempotente, 404 para id inexistente
+    const r1 = await fetch(`${BACKEND_URL}/deteccoes/${a}/resolver`, { method: 'POST' })
+    assert.equal(r1.status, 200)
+    const d1 = DeteccaoSchema.parse(await r1.json())
+    assert.ok(d1.resolvido_em, 'resolvido_em não preenchido')
+    await new Promise((r) => setTimeout(r, 50))
+    const d2 = DeteccaoSchema.parse(await (await fetch(`${BACKEND_URL}/deteccoes/${a}/resolver`, { method: 'POST' })).json())
+    assert.equal(d2.resolvido_em, d1.resolvido_em, 'segunda chamada mudou resolvido_em')
+    assert.equal((await fetch(`${BACKEND_URL}/deteccoes/2147483647/resolver`, { method: 'POST' })).status, 404)
+
+    // 6. GET /deteccoes/:id traz fim e resolvido_em
+    const g = DeteccaoSchema.parse(await (await fetch(`${BACKEND_URL}/deteccoes/${a}`)).json())
+    assert.equal(g.fim, em(5))
+    assert.equal(g.resolvido_em, d1.resolvido_em)
+    const aberta = DeteccaoSchema.parse(await (await fetch(`${BACKEND_URL}/deteccoes/${c}`)).json())
+    assert.equal(aberta.fim, null)
+    assert.equal(aberta.resolvido_em, null)
+  } finally {
+    await client.endAsync()
+  }
 })

@@ -371,7 +371,7 @@
     par; trecho cortado com a garrafa ainda no quadro → fim publicado no encerramento,
     antes do `offline`
 
-- [ ] **T31** — Persistir fim e resolução das ocorrências
+- [x] **T31** — Persistir fim e resolução das ocorrências
   - Dependência: T30 concluída
   - Migração: `tipo_area` em `cameras`; `fim`, `resolvido_em`,
     `alertas_enviados` e índice `idx_deteccoes_abertas` em `deteccoes`;
@@ -385,6 +385,16 @@
   - **Evidência:** linhas existentes preservadas após a migração; smoke test:
     fim gravado na ocorrência certa, fim sem ocorrência descartado com log,
     `/resolver` idempotente e `404` para id inexistente
+  - **Resultado:** migração (`src/db/migracao_alerta.sql`, em transação) aplicada após
+    backup com `pg_dump`: 14 linhas antes e depois (max id 171), todas com `fim` e
+    `resolvido_em` nulos; `cam_test` → `ponto_coleta`, câmeras de campo → `zona_proibida`;
+    segunda execução sem efeito; `schema.sql` num banco vazio chega ao mesmo estado
+    (colunas, `deteccoes_fim_check`, `idx_deteccoes_abertas`). Smoke test 5/5 (4 antigos +
+    1 novo): fim na linha certa; fim sem ocorrência descartado com log; com duas abertas do
+    mesmo par, o fim vai para a mais recente; fim anterior ao início não é aplicado;
+    `/resolver` 200 idempotente e 404; `GET /deteccoes/:id` com `fim` e `resolvido_em`;
+    limpeza sem deixar linhas. `tsc` sem erros. POST com `Content-Type: application/json`
+    e corpo vazio → 400 `FST_ERR_CTP_EMPTY_JSON_BODY` (verificar o botão do ntfy na T32)
 
 - [ ] **T32** — Agendador de alertas e servidor ntfy
   - Dependência: T31 concluída

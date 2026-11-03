@@ -18,6 +18,9 @@ export const DeteccaoSchema = z.object({
   classe: ClasseSchema,
   confianca: z.number().min(0).max(1),
   latencia_ms: z.number().int().nullable(),
+  // Fim da ocorrência e confirmação do gestor (spec 3.1); null enquanto não ocorrem
+  fim: z.string().nullable(),
+  resolvido_em: z.string().nullable(),
 })
 
 export const DeteccoesQuerySchema = z.object({
@@ -68,6 +71,16 @@ export const StatusPayloadSchema = z.object({
 })
 
 export type StatusPayload = z.infer<typeof StatusPayloadSchema>
+
+// Fim de ocorrência em condoai/ocorrencias/fim (spec 4.4): timestamp é a
+// última vez em que a classe foi vista
+export const FimPayloadSchema = z.object({
+  timestamp: z.iso.datetime({ offset: true }),
+  camera_id: z.string().min(1).max(50),
+  classe: ClasseNomeSchema,
+})
+
+export type FimPayload = z.infer<typeof FimPayloadSchema>
 
 const BboxSchema = z.tuple([z.number(), z.number(), z.number(), z.number()])
 

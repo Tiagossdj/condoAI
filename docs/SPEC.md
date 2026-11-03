@@ -242,7 +242,7 @@ CREATE TABLE deteccoes (
   fim              TIMESTAMPTZ,                -- última vez em que a classe foi vista (4.4)
   resolvido_em     TIMESTAMPTZ,                -- confirmação do gestor (7.3)
   alertas_enviados SMALLINT NOT NULL DEFAULT 0, -- quantos limites de alerta já foram avisados
-  CHECK (fim IS NULL OR fim >= timestamp)
+  CONSTRAINT deteccoes_fim_check CHECK (fim IS NULL OR fim >= timestamp)
 );
 
 -- Índices de performance
@@ -271,9 +271,10 @@ introdução do fim ficam com `fim` nulo.
 onde resíduo não deve ficar) gera alertas (7.3); `ponto_coleta` (onde
 ter resíduo é normal) só registra.
 
-**Migração:** as colunas novas entram por `ALTER TABLE ... ADD COLUMN`,
-preservando as linhas já registradas (inclusive as da demonstração em
-campo, seção 11).
+**Migração:** as colunas novas entram por `ALTER TABLE ... ADD COLUMN`
+(`apps/backend/src/db/migracao_alerta.sql`, idempotente), preservando as
+linhas já registradas (inclusive as da demonstração em campo, seção 11).
+O `schema.sql` cria o banco novo já no estado final.
 
 ### 3.2 Classes do modelo YOLOv8
 

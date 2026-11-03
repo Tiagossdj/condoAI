@@ -20,5 +20,20 @@ services:
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
+  # Servidor de notificação dos alertas ao gestor (spec 2.4 e 7.3); sem
+  # upstream-base-url, para não depender de internet (RNF03)
+  ntfy:
+    image: binwiederhier/ntfy:v2
+    restart: unless-stopped
+    command: serve
+    environment:
+      # Cache: o celular que perder o Wi-Fi recebe os alertas ao reconectar
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+    ports:
+      - "8080:80"
+    volumes:
+      - ntfy_cache:/var/cache/ntfy
+
 volumes:
   postgres_data:
+  ntfy_cache:

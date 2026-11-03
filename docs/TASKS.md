@@ -352,7 +352,7 @@
 > permanece em zona proibida (spec 2.1, 3.1, 4.4 e 7.3; RF11, RF13, RF14).
 > Funcionalidade acrescentada após o TC1.
 
-- [ ] **T30** — Publicar o fim da ocorrência no `main.py`
+- [x] **T30** — Publicar o fim da ocorrência no `main.py`
   - Dependência: T29 concluída
   - No encerramento da ocorrência (`--ausencia`) e no encerramento normal do
     serviço, publicar em `condoai/ocorrencias/fim` com o `timestamp` da última
@@ -362,6 +362,14 @@
   - **Evidência:** testes da lógica de ocorrências (tempo simulado) com o fim
     publicado uma vez por ocorrência e com o `timestamp` da última aparição;
     vídeo com objeto que entra e sai gera início e fim no broker
+  - **Resultado:** lógica isolada (tempo simulado, 30 fps) 15/15 casos OK: fim único
+    ~30 s após a última aparição e com o horário dela; candidata (25%) sem fim; stream
+    travado > 30 s → fim da antiga + nova ocorrência; `encerrar_todas` só nas presentes;
+    broker fora → fins pendentes reenviados na ordem com o timestamp original;
+    regressão da proporção (50% → 0; 75% e 100% → 1). Vídeo de campo (`corredor_a.mp4`,
+    25 min) no Mosquitto real: 5 inícios e 5 fins, cada fim com `timestamp` ≥ início do
+    par; trecho cortado com a garrafa ainda no quadro → fim publicado no encerramento,
+    antes do `offline`
 
 - [ ] **T31** — Persistir fim e resolução das ocorrências
   - Dependência: T30 concluída

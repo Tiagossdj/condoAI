@@ -96,6 +96,11 @@ class Ocorrencias:
     confirma quando, numa janela móvel de `confirmacao` segundos, aparece em
     pelo menos `proporcao` dos frames. Não depende de câmera nem de MQTT: o
     tempo entra como parâmetro, o que permite testar a lógica isoladamente.
+
+    Ao encerrar uma ocorrência confirmada, guarda o fim (classe e horário ISO
+    da última aparição) para publicação em condoai/ocorrencias/fim; `fins()`
+    devolve e esvazia essa lista. Candidatas não confirmadas não têm fim:
+    nunca viraram linha no banco.
     """
 
     def __init__(
@@ -109,12 +114,19 @@ class Ocorrencias:
         self.confirmacao = confirmacao
         self.lacuna = lacuna
         self.proporcao = proporcao
-        # classe → {"inicio", "ultimo", "confianca", "presente", "publicado_em",
-        #           "janela": deque[(t, vista)] com os frames da candidata}
+        # classe → {"inicio", "ultimo", "ultimo_instante", "confianca", "presente",
+        #           "publicado_em", "janela": deque[(t, vista)] com os frames da candidata}
         self.estado: dict[str, dict] = {}
+        self._fins: list[dict] = []
 
-    def atualizar(self, deteccoes: list[dict], agora: float) -> list[str]:
-        """Registra as detecções do frame; devolve as classes a publicar."""
+    def atualizar(
+        self, deteccoes: list[dict], agora: float, instante: str | None = None
+    ) -> list[str]:
+        """Registra as detecções do frame; devolve as classes a publicar.
+
+        `agora` é monotônico (durações); `instante` é o horário ISO 8601 UTC
+        do frame, usado como timestamp do fim da ocorrência.
+        """
         vistas: dict[str, float] = {}
         for d in deteccoes:
             vistas[d["classe"]] = max(vistas.get(d["classe"], 0.0), d["confianca"])
@@ -130,6 +142,7 @@ class Ocorrencias:
                 self.estado[classe] = {
                     "inicio": agora,
                     "ultimo": agora,
+                    "ultimo_instante": instante,
                     "confianca": confianca,
                     "presente": False,
                     "publicado_em": None,
@@ -137,6 +150,7 @@ class Ocorrencias:
                 }
             else:
                 e["ultimo"] = agora
+                e["ultimo_instante"] = instante
                 e["confianca"] = max(e["confianca"], confianca)
                 if not e["presente"]:
                     e["janela"].append((agora, True))
@@ -168,7 +182,19 @@ class Ocorrencias:
                 classe,
                 formatar_duracao(e["ultimo"] - e["inicio"]),
             )
+            self._fins.append({"classe": classe, "timestamp": e["ultimo_instante"]})
         del self.estado[classe]
+
+    def fins(self) -> list[dict]:
+        """Devolve e esvazia os fins de ocorrência acumulados."""
+        fins, self._fins = self._fins, []
+        return fins
+
+    def encerrar_todas(self) -> list[dict]:
+        """Encerra tudo (fim do serviço); devolve os fins pendentes."""
+        for classe, e in list(self.estado.items()):
+            self._encerrar(classe, e)
+        return self.fins()
 
     def confianca(self, classe: str) -> float:
         return round(self.estado[classe]["confianca"], 3)
@@ -320,6 +346,22 @@ class Gravador:
             self.writer.release()
 
 
+def publicar_fins(publisher, fins: list[dict], aguardar: bool = False) -> list[dict]:
+    """Publica os fins na ordem; devolve os que não saíram (broker fora)."""
+    for i, fim in enumerate(fins):
+        payload = {
+            "timestamp": fim["timestamp"],
+            "camera_id": CAMERA_ID,
+            "classe": fim["classe"],
+        }
+        if not publisher.publish_fim(payload, aguardar=aguardar):
+            return fins[i:]
+        logger.info(
+            "fim de ocorrência publicado: %s (visto até %s)", fim["classe"], fim["timestamp"]
+        )
+    return []
+
+
 def run(
     source: int | str,
     detector,
@@ -334,6 +376,8 @@ def run(
         raise RuntimeError(f"não foi possível abrir a fonte de vídeo: {source}")
 
     ocorrencias = Ocorrencias(ausencia)
+    # Fins ainda não entregues ao broker (spec 4.4): reenviados a cada frame
+    fins_pendentes: list[dict] = []
 
     gravador = None
     if gravar:
@@ -365,7 +409,7 @@ def run(
             inferencia_ms = round((time.perf_counter() - t0) * 1000)
 
             agora = time.monotonic()
-            for classe in ocorrencias.atualizar(deteccoes, agora):
+            for classe in ocorrencias.atualizar(deteccoes, agora, timestamp):
                 payload = {
                     "timestamp": timestamp,
                     "camera_id": CAMERA_ID,
@@ -384,6 +428,8 @@ def run(
                         payload["confianca"],
                         payload["latencia_ms"],
                     )
+
+            fins_pendentes = publicar_fins(publisher, fins_pendentes + ocorrencias.fins())
 
             # FPS do loop completo (captura + inferência + publicação), suavizado
             # O 1º frame só marca o tempo: inclui o aquecimento do modelo
@@ -417,6 +463,13 @@ def run(
                 logger.info("preview fechado pelo usuário")
                 break
     finally:
+        # Encerramento normal (fim do vídeo, q/ESC, janela, Ctrl+C): as classes
+        # ainda presentes recebem fim; aguarda a entrega antes do close()
+        pendentes = publicar_fins(
+            publisher, fins_pendentes + ocorrencias.encerrar_todas(), aguardar=True
+        )
+        if pendentes:
+            logger.warning("%d fim(ns) de ocorrência não publicado(s)", len(pendentes))
         cap.release()
         if gravador:
             gravador.fechar()

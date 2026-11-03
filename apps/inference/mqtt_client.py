@@ -9,6 +9,7 @@ from paho.mqtt.enums import CallbackAPIVersion
 
 from config import (
     CAMERA_ID,
+    FIM_TOPIC,
     MODEL_VERSION,
     MQTT_HOST,
     MQTT_KEEPALIVE_S,
@@ -90,6 +91,28 @@ class MQTTPublisher:
             self.topic, json.dumps(payload, ensure_ascii=False), qos=1
         )
         return info.rc == mqtt.MQTT_ERR_SUCCESS
+
+    def publish_fim(self, payload: dict, aguardar: bool = False) -> bool:
+        """Fim de ocorrência em condoai/ocorrencias/fim, sem retain (spec 4.4).
+
+        Com o broker fora devolve False e o chamador guarda o fim para
+        reenviar: o timestamp é o da última aparição, então o atraso não
+        distorce a medida, e perder o fim deixaria a ocorrência aberta.
+        """
+        if not self.client.is_connected():
+            return False
+        info = self.client.publish(
+            FIM_TOPIC, json.dumps(payload, ensure_ascii=False), qos=1
+        )
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            return False
+        if aguardar:
+            try:
+                info.wait_for_publish(timeout=2)
+            except (RuntimeError, ValueError):
+                return False
+            return info.is_published()
+        return True
 
     def publish_status(self, estado: str, fps: float | None = None) -> bool:
         """Sinal de vida em condoai/status/<camera_id>, com retain (spec 4.7)."""

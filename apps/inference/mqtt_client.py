@@ -27,7 +27,7 @@ def _agora_iso() -> str:
     )
 
 
-def _status_payload(estado: str, fps: float | None) -> str:
+def _status_payload(estado: str, fps: float | None, online_desde: str | None) -> str:
     return json.dumps(
         {
             "camera_id": CAMERA_ID,
@@ -35,6 +35,9 @@ def _status_payload(estado: str, fps: float | None) -> str:
             "estado": estado,
             "modelo": MODEL_VERSION,
             "fps": None if fps is None else round(fps, 1),
+            # Início da sessão de monitoramento (spec 4.7): ocorrências anteriores
+            # a ele não geram alerta, pois o main.py não as acompanha (spec 7.3)
+            "online_desde": online_desde if estado == "online" else None,
         }
     )
 
@@ -45,6 +48,9 @@ class MQTTPublisher:
     ) -> None:
         self.topic = topic
         self.ultimo_fps: float | None = None
+        # A sessão é o processo: a reconexão ao broker não a reinicia, porque o
+        # estado das ocorrências continua em memória
+        self.online_desde = _agora_iso()
         self.client = mqtt.Client(
             CallbackAPIVersion.VERSION2, client_id=f"condoai-inference-{CAMERA_ID}"
         )
@@ -55,7 +61,7 @@ class MQTTPublisher:
         # publica "offline". Precisa ser registrado antes de conectar; o
         # timestamp é o do momento da conexão (o broker não o atualiza)
         self.client.will_set(
-            STATUS_TOPIC, _status_payload("offline", None), qos=1, retain=True
+            STATUS_TOPIC, _status_payload("offline", None, None), qos=1, retain=True
         )
 
         # Reconexão automática: espera de 1 s, dobrando até o teto de 30 s
@@ -121,7 +127,7 @@ class MQTTPublisher:
         if not self.client.is_connected():
             return False
         info = self.client.publish(
-            STATUS_TOPIC, _status_payload(estado, fps), qos=1, retain=True
+            STATUS_TOPIC, _status_payload(estado, fps, self.online_desde), qos=1, retain=True
         )
         return info.rc == mqtt.MQTT_ERR_SUCCESS
 
@@ -130,7 +136,7 @@ class MQTTPublisher:
         # o "offline" é publicado aqui e aguardado antes de desconectar
         if self.client.is_connected():
             info = self.client.publish(
-                STATUS_TOPIC, _status_payload("offline", None), qos=1, retain=True
+                STATUS_TOPIC, _status_payload("offline", None, None), qos=1, retain=True
             )
             try:
                 info.wait_for_publish(timeout=2)

@@ -344,3 +344,57 @@
     com as classes corretas, confiança 0,854–0,878. Desvios: duração total
     abaixo da 1 h prevista (limite de tempo no local); na garagem o timestamp é
     o do processamento, não o da gravação
+
+## Fase 7 — Alerta escalonado ao gestor
+
+> Dependência: Fase 6 concluída. Objetivo: fechar o ciclo detectar →
+> avisar → agir → confirmar, avisando o gestor no celular quando um resíduo
+> permanece em zona proibida (spec 2.1, 3.1, 4.4 e 7.3; RF11, RF13, RF14).
+> Funcionalidade acrescentada após o TC1.
+
+- [ ] **T30** — Publicar o fim da ocorrência no `main.py`
+  - Dependência: T29 concluída
+  - No encerramento da ocorrência (`--ausencia`) e no encerramento normal do
+    serviço, publicar em `condoai/ocorrencias/fim` com o `timestamp` da última
+    vez em que a classe foi vista (spec 4.4)
+  - Sem alteração no payload 4.2 nem no `/scan`
+  - **Commit:** `feat(inference): publicar fim das ocorrências`
+  - **Evidência:** testes da lógica de ocorrências (tempo simulado) com o fim
+    publicado uma vez por ocorrência e com o `timestamp` da última aparição;
+    vídeo com objeto que entra e sai gera início e fim no broker
+
+- [ ] **T31** — Persistir fim e resolução das ocorrências
+  - Dependência: T30 concluída
+  - Migração: `tipo_area` em `cameras`; `fim`, `resolvido_em`,
+    `alertas_enviados` e índice `idx_deteccoes_abertas` em `deteccoes`;
+    seed da `cam_test` como `ponto_coleta` (spec 3.1 e 3.3)
+  - Backend: subscribe em `condoai/ocorrencias/fim` com Zod; `fim` gravado na
+    ocorrência aberta mais recente do par (câmera, classe) (spec 4.4);
+    `POST /deteccoes/:id/resolver`; `fim` e `resolvido_em` em `GET /deteccoes`
+    (spec 7.1)
+  - **Commits:** `feat(db): adicionar fim, resolução e tipo de área às ocorrências`;
+    `feat(backend): registrar fim das ocorrências e confirmação de resolução`
+  - **Evidência:** linhas existentes preservadas após a migração; smoke test:
+    fim gravado na ocorrência certa, fim sem ocorrência descartado com log,
+    `/resolver` idempotente e `404` para id inexistente
+
+- [ ] **T32** — Agendador de alertas e servidor ntfy
+  - Dependência: T31 concluída
+  - `docker-compose.yml`: serviço `ntfy` na porta `8080` (spec 2.4)
+  - Backend: agendador (spec 7.3) com limites e intervalo por variável de
+    ambiente; mensagem sem imagem; prioridade crescente; botão "Resolvido"
+  - **Commits:** `chore(backend): adicionar servidor ntfy ao docker-compose`;
+    `feat(backend): alertar o gestor sobre resíduo parado em zona proibida`
+  - **Evidência:** teste acelerado (`ALERTA_LIMITES_S=10,40,120`) com o
+    celular Android recebendo os três alertas, sem repetir limite; "Resolvido"
+    no alerta grava `resolvido_em` e interrompe os alertas; câmera
+    `ponto_coleta` e câmera offline não geram alerta; Android sem internet
+    recebe o alerta pela rede local
+
+- [ ] **T33** — Demonstração em campo do ciclo completo
+  - Dependência: T32 concluída
+  - Sessão com câmera fixa em zona proibida, gestor com Android e limites
+    reais ou reduzidos (registrar quais)
+  - **Commit:** `docs(spec): registrar resultado do alerta escalonado em campo`
+  - **Evidência:** ocorrências com `fim` e `resolvido_em` no banco; tempo de
+    permanência e tempo até a confirmação por ocorrência

@@ -95,11 +95,23 @@ O sistema é composto por **quatro camadas funcionais desacopladas**:
         │ broadcast via WebSocket
         ▼
 [Dashboard — Next.js]  ← exibe em tempo real
+
+[Backend — agendador de alertas (7.3)]
+        │ HTTP (rede local)
+        ▼
+[ntfy — servidor de notificação local]
+        │ conexão persistente
+        ▼
+[Celular Android do gestor]  ── botão "Resolvido" ──► POST /deteccoes/:id/resolver
 ```
 
 O desacoplamento por MQTT é intencional: o serviço de inferência não
 conhece o backend, e o backend não conhece a câmera. Cada camada pode
 ser substituída ou escalada independentemente.
+
+O ciclo se fecha no gestor: a câmera detecta, o backend avisa quando o
+resíduo permanece em zona proibida (7.3), o gestor age e confirma a
+resolução pelo próprio alerta.
 
 ### 2.2 Justificativa das escolhas técnicas
 
@@ -117,12 +129,15 @@ ser substituída ou escalada independentemente.
 - Deploy em nuvem (tudo roda em localhost/LAN)
 - Escalabilidade multi-câmera simultânea
 - Hardware embarcado / robô
-- Autenticação de usuários
-- Notificações push
+- Autenticação de usuários (inclusive na rota `POST /deteccoes/:id/resolver`
+  e no tópico do ntfy, 7.3)
 - Tracking por objeto (`model.track` do ultralytics, com ID por objeto):
   as ocorrências (4.4) são controladas por classe
-- Duração das ocorrências no banco (início e fim persistidos); hoje a
-  duração aparece só no `--preview` (4.6)
+- Recorte da área monitorada antes da inferência (aumentaria o tamanho
+  relativo dos resíduos na entrada de 640×640, mas muda a entrada do
+  modelo e exigiria refazer as avaliações já registradas)
+- Notificação offline no iOS: em segundo plano, o iOS entrega
+  notificações só pelo APNs da Apple, que exige internet (RNF03)
 - Área monitorada por câmera persistida no cadastro da câmera (ex.: coluna
   em `cameras`), em vez do argumento `--area` (4.8): com várias câmeras,
   cada enquadramento define onde a detecção vale
@@ -140,9 +155,13 @@ PostgreSQL 16 e Mosquitto rodam via Docker Compose. O arquivo
 |---|---|---|
 | postgres | `postgres:16-alpine` | `5432` |
 | mosquitto | `eclipse-mosquitto:2` | `1883` (MQTT), `9001` (WebSocket) |
+| ntfy | `binwiederhier/ntfy` (comando `serve`) | `8080` (HTTP) |
 
 O Mosquitto requer um `mosquitto.conf` montado no container — a imagem
 oficial não expõe nenhuma porta sem configuração explícita.
+
+O ntfy é o servidor de notificação dos alertas ao gestor (7.3). Roda na
+mesma máquina, sem conta e sem serviço externo.
 
 **Variáveis de ambiente (arquivo `.env` na raiz, nunca commitado):**
 
@@ -200,7 +219,9 @@ CREATE TABLE cameras (
   id         SERIAL PRIMARY KEY,
   camera_id  VARCHAR(50) UNIQUE NOT NULL,  -- identificador lógico (ex: "cam_hall")
   localizacao TEXT NOT NULL,               -- string estática configurada (ex: "Hall de entrada")
-  ativo      BOOLEAN DEFAULT TRUE
+  ativo      BOOLEAN DEFAULT TRUE,
+  tipo_area  VARCHAR(20) NOT NULL DEFAULT 'zona_proibida'
+             CHECK (tipo_area IN ('zona_proibida', 'ponto_coleta'))
 );
 
 -- Classes de objetos detectáveis
@@ -217,14 +238,42 @@ CREATE TABLE deteccoes (
   camera_id   INTEGER NOT NULL REFERENCES cameras(id),
   classe_id   INTEGER NOT NULL REFERENCES classes(id),
   confianca   NUMERIC(4,3) CHECK (confianca >= 0 AND confianca <= 1),
-  latencia_ms INTEGER
+  latencia_ms INTEGER,
+  fim              TIMESTAMPTZ,                -- última vez em que a classe foi vista (4.4)
+  resolvido_em     TIMESTAMPTZ,                -- confirmação do gestor (7.3)
+  alertas_enviados SMALLINT NOT NULL DEFAULT 0, -- quantos limites de alerta já foram avisados
+  CHECK (fim IS NULL OR fim >= timestamp)
 );
 
 -- Índices de performance
 CREATE INDEX idx_deteccoes_timestamp  ON deteccoes (timestamp DESC);
 CREATE INDEX idx_deteccoes_camera     ON deteccoes (camera_id);
 CREATE INDEX idx_deteccoes_classe     ON deteccoes (classe_id);
+CREATE INDEX idx_deteccoes_abertas    ON deteccoes (camera_id, classe_id)
+  WHERE fim IS NULL AND resolvido_em IS NULL;
 ```
+
+**Estado da ocorrência** (derivado, sem coluna própria):
+
+| Estado | Condição |
+|---|---|
+| aberta | `fim IS NULL AND resolvido_em IS NULL` |
+| encerrada | `fim IS NOT NULL` (o resíduo deixou de ser visto) |
+| resolvida | `resolvido_em IS NOT NULL` (o gestor confirmou) |
+
+Os estados encerrada e resolvida podem coexistir. Duas medidas saem
+dessas colunas: `fim - timestamp` é o **tempo de permanência** medido
+pela câmera; `resolvido_em - timestamp` é o **tempo até a confirmação**
+do gestor. Detecções do `/scan` (8.4) e as registradas antes da
+introdução do fim ficam com `fim` nulo.
+
+**Tipo de área** (`cameras.tipo_area`): `zona_proibida` (ex.: corredor,
+onde resíduo não deve ficar) gera alertas (7.3); `ponto_coleta` (onde
+ter resíduo é normal) só registra.
+
+**Migração:** as colunas novas entram por `ALTER TABLE ... ADD COLUMN`,
+preservando as linhas já registradas (inclusive as da demonstração em
+campo, seção 11).
 
 ### 3.2 Classes do modelo YOLOv8
 
@@ -251,9 +300,12 @@ INSERT INTO classes (nome, descricao) VALUES
   ('papelao',      'Caixas de papelão'),
   ('lixo_generico','Outros resíduos não classificados');
 
-INSERT INTO cameras (camera_id, localizacao) VALUES
-  ('cam_test', 'Ambiente de teste — desenvolvimento');
+INSERT INTO cameras (camera_id, localizacao, tipo_area) VALUES
+  ('cam_test', 'Ambiente de teste — desenvolvimento', 'ponto_coleta');
 ```
+
+A `cam_test` é a câmera do `/scan` (8.4): como `ponto_coleta`, nunca
+gera alerta.
 
 ---
 
@@ -265,6 +317,7 @@ INSERT INTO cameras (camera_id, localizacao) VALUES
 |---|---|---|
 | `condoai/deteccoes` | uma mensagem por ocorrência (4.2 e 4.4) | `main.py` e `POST /scan` (8.4) |
 | `condoai/status/<camera_id>` | sinal de vida da câmera (4.7); um tópico por câmera | `main.py` e broker (Last Will) |
+| `condoai/ocorrencias/fim` | fim de uma ocorrência (4.4) | `main.py` |
 
 ### 4.2 Payload (JSON)
 
@@ -311,10 +364,33 @@ centenas de linhas para um único descarte. O `main.py` registra
    publicado
 4. **Encerramento:** se a classe não é vista por `--ausencia` segundos
    (padrão 30 s, tolera alguém passando na frente), a ocorrência termina
-   e a classe volta a `ausente`. Se reaparecer, é uma nova ocorrência
+   e a classe volta a `ausente`. Se reaparecer, é uma nova ocorrência.
+   No encerramento, o `main.py` publica o fim em `condoai/ocorrencias/fim`
+5. **Encerramento do serviço:** ao encerrar normalmente (fim do vídeo,
+   `q`, Ctrl+C), o `main.py` publica o fim de cada classe ainda
+   `presente`. Se o processo cair, nada é publicado e a ocorrência fica
+   aberta; a câmera aparece offline (4.7) e não gera alertas (7.3)
 
 Se a publicação falhar (broker fora), a classe continua `ausente` e a
 próxima detecção confirmada tenta de novo.
+
+**Payload do fim** (`condoai/ocorrencias/fim`):
+
+```json
+{
+  "timestamp": "2026-11-10T14:52:00.000Z",
+  "camera_id": "cam_corredor_a",
+  "classe":    "saco_lixo"
+}
+```
+
+- `timestamp`: ISO 8601 UTC da **última vez em que a classe foi vista**,
+  não o fim da janela de `--ausencia`
+- `camera_id` e `classe`: mesmas regras do payload 4.2
+- O backend valida com Zod (2.5) e grava `fim` na ocorrência aberta mais
+  recente do par (câmera, classe) com `timestamp <= fim`; sem ocorrência
+  correspondente, a mensagem é descartada com log
+- Sem retain: um fim só vale para a ocorrência em curso
 
 **Limitação:** o controle é por classe. Dois sacos de lixo ao mesmo tempo
 formam uma única ocorrência de `saco_lixo` (tracking por objeto é
@@ -549,6 +625,7 @@ O serviço de inferência carrega `models/<MODEL_VERSION>/best.pt`
 |---|---|---|
 | GET | `/deteccoes` | Lista detecções (paginada, ordenada por timestamp DESC) |
 | GET | `/deteccoes/:id` | Detecção específica |
+| POST | `/deteccoes/:id/resolver` | Confirmação de resolução pelo gestor (7.3) |
 | GET | `/cameras` | Lista câmeras ativas |
 | GET | `/classes` | Lista classes disponíveis |
 | GET | `/health` | Health check do serviço |
@@ -576,12 +653,22 @@ feed no dashboard).
       "camera": { "id": 1, "camera_id": "cam_hall", "localizacao": "Hall de entrada" },
       "classe": { "id": 1, "nome": "saco_lixo" },
       "confianca": 0.847,
-      "latencia_ms": 214
+      "latencia_ms": 214,
+      "fim": "2026-10-05T14:52:00.000Z",
+      "resolvido_em": null
     }
   ],
   "next_cursor": "2026-10-05T14:30:00.000Z"
 }
 ```
+
+`fim` e `resolvido_em`: ISO 8601 ou `null` (3.1). `GET /deteccoes/:id`
+devolve o mesmo objeto.
+
+**`POST /deteccoes/:id/resolver`** (sem corpo): grava `resolvido_em =
+NOW()` se ainda for nulo e devolve a detecção. É idempotente: chamadas
+seguintes devolvem `200` com o mesmo `resolvido_em`. Id inexistente →
+`404 { "error": "..." }`. Chamada pelo botão "Resolvido" do alerta (7.3).
 
 **Resposta de `/estatisticas`:**
 
@@ -705,6 +792,76 @@ por câmera conhecida (o snapshot atual):
 - `ultimo_sinal`: `timestamp` do payload 4.7
 - `idade_s`: segundos desde que o backend recebeu a mensagem, calculado
   no envio; o cliente usa para não depender do relógio do dispositivo
+
+### 7.3 Alerta escalonado ao gestor (ntfy)
+
+O dashboard só informa quem está olhando. O backend avisa o gestor no
+celular quando um resíduo **permanece** em zona proibida, em limites de
+tempo crescentes, e não a cada detecção: alerta demais faz o gestor
+parar de ler.
+
+**Agendador** (no próprio backend, a cada `ALERTA_VERIFICACAO_S`
+segundos, padrão `60`):
+
+1. Seleciona as ocorrências **abertas** (3.1) de câmeras com
+   `tipo_area = 'zona_proibida'`, `ativo = TRUE` e estado `online` no
+   sinal de vida (4.7, estado em memória da 7.2). Com a câmera offline
+   não se sabe se o resíduo continua no local
+2. Considera só a ocorrência mais recente de cada par (câmera, classe):
+   uma ocorrência que ficou aberta porque o `main.py` caiu (4.4, passo 5)
+   não gera alerta
+3. Limites em `ALERTA_LIMITES_S` (segundos, crescentes; padrão
+   `600,2400,7200`, ou seja, 10 min, 40 min e 2 h). Se o tempo de
+   permanência (`NOW() - timestamp`) passou de
+   `limites[alertas_enviados]`, envia um alerta e grava em
+   `alertas_enviados` a quantidade de limites já ultrapassados. Se vários
+   limites passaram de uma vez (ex.: backend fora do ar), envia **um**
+   alerta só
+4. Esgotados os limites, a ocorrência não gera mais alertas. Falha no
+   envio (ntfy fora) não incrementa o contador: o próximo ciclo tenta
+   de novo
+
+**Mensagem** (`POST` JSON para `NTFY_URL`, no tópico `NTFY_TOPICO`):
+
+- Título: `condoAI · resíduo em zona proibida`
+- Texto: classe, local e tempo de permanência, ex.:
+  `saco_lixo em corredor_A há 40 min`
+- **Sem imagem** (seção 5)
+- Prioridade sobe a cada limite (padrão → alta → urgente)
+- Botão de ação HTTP **"Resolvido"**: `POST
+  <BACKEND_URL_LAN>/deteccoes/<id>/resolver`, disparado pelo próprio
+  celular pela rede local (7.1)
+
+**Variáveis de ambiente** (`apps/backend/.env`):
+
+```env
+NTFY_URL=http://localhost:8080
+NTFY_TOPICO=condoai-alertas
+BACKEND_URL_LAN=http://<ip-do-notebook>:3001
+ALERTA_LIMITES_S=600,2400,7200
+ALERTA_VERIFICACAO_S=60
+```
+
+Para os testes, os limites são acelerados (ex.:
+`ALERTA_LIMITES_S=10,40,120` e `ALERTA_VERIFICACAO_S=2`).
+
+**Celular do gestor:** app ntfy (Android) inscrito em
+`http://<ip-do-notebook>:8080/condoai-alertas`. No Android, o app mantém
+uma conexão direta com o servidor local e recebe os alertas sem
+internet. No iOS, a notificação em segundo plano passa pelo APNs da
+Apple e exige internet (RNF03); por isso o aparelho do gestor na
+demonstração é Android.
+
+**Limitações:**
+
+- O controle é por classe (4.4): "o resíduo continua no local" significa
+  "a classe continua presente na área". Um falso positivo fixo geraria
+  alertas; a área monitorada (4.8) reduz esse risco, e o botão
+  "Resolvido" encerra os alertas da ocorrência
+- Sem autenticação (2.3): quem estiver na rede local pode assinar o
+  tópico ou chamar a rota de resolução
+- A infraestrutura continua em um único notebook (seção 11); o alerta
+  melhora o uso da camada de aplicação, não a infraestrutura
 
 ---
 
@@ -879,8 +1036,10 @@ O backend recebe o frame, repassa ao serviço de inferência via HTTP
 | RF08 | O dashboard deve exibir contagem por classe de resíduo |
 | RF09 | O sistema deve filtrar detecções com confiança < 0,4 |
 | RF10 | O sistema não deve armazenar imagens de pessoas nem dados pessoais (LGPD) |
-| RF11 | Na câmera fixa, o sistema deve registrar ocorrências (uma por presença de classe), não frames |
+| RF11 | Na câmera fixa, o sistema deve registrar ocorrências (uma por presença de classe, com início e fim), não frames |
 | RF12 | O dashboard deve exibir o estado de cada câmera (monitorando / offline) |
+| RF13 | O sistema deve alertar o gestor quando um resíduo permanecer em zona proibida além de cada limite de tempo configurado |
+| RF14 | O sistema deve permitir que o gestor confirme a resolução pelo próprio alerta, encerrando os avisos daquela ocorrência |
 
 ## 10. Requisitos não funcionais
 
@@ -895,6 +1054,11 @@ O backend recebe o frame, repassa ao serviço de inferência via HTTP
 | RNF07 | Código versionado com Conventional Commits |
 | RNF08 | Cada camada deve poder ser reiniciada independentemente das demais |
 
+**Nota sobre o RNF03:** o núcleo do sistema (captura, inferência, MQTT,
+banco, dashboard e servidor de notificação) roda sem internet. O alerta
+ao gestor (7.3) chega offline em **Android**; no **iOS**, a notificação
+em segundo plano passa pelo APNs da Apple e exige internet.
+
 ---
 
 ## 11. Topologia da demonstração em campo
@@ -904,8 +1068,11 @@ local (RNF03): sem internet, sem deploy.
 
 ```
 [Celular com DroidCam]  ──Wi-Fi──►  [Notebook: main.py + YOLOv8 (GPU),   ──Wi-Fi──►  [Outro aparelho:
- câmera IP fixa                       Mosquitto, Fastify, PostgreSQL]                  dashboard no navegador]
- http://<ip>:4747/video
+ câmera IP fixa                       Mosquitto, Fastify, PostgreSQL,                  dashboard no navegador]
+ http://<ip>:4747/video               ntfy]
+                                                │
+                                                └──Wi-Fi──►  [Celular Android do gestor:
+                                                              app ntfy, botão "Resolvido"]
 ```
 
 - **Câmera:** celular fixo apontado para a área monitorada, com o app
@@ -925,6 +1092,9 @@ local (RNF03): sem internet, sem deploy.
 - **Dashboard:** aberto em outro aparelho pela LAN
   (`http://<ip-do-notebook>:3000/dashboard`), mostrando as ocorrências e
   o estado da câmera em tempo real
+- **Gestor:** celular Android com o app ntfy inscrito em
+  `http://<ip-do-notebook>:8080/condoai-alertas` (7.3); recebe os
+  alertas e confirma a resolução pela rede local, sem internet
 - **Rede sem Wi-Fi no local:** roteador (hotspot) de um celular; não
   precisa de dados móveis. Notebook, câmera e aparelho da banca entram
   na mesma rede
@@ -934,8 +1104,8 @@ local (RNF03): sem internet, sem deploy.
   caminho até o dashboard é o mesmo, mas o `timestamp` das detecções é o
   do processamento, não o da gravação
 - **Firewall do Windows:** marcar a rede como **Privada** e liberar
-  entrada TCP nas portas `3000` e `3001` só no perfil Privado (PowerShell
-  como administrador). A porta `1883` só precisa ser liberada se o
+  entrada TCP nas portas `3000`, `3001` e `8080` (ntfy) só no perfil
+  Privado (PowerShell como administrador). A porta `1883` só precisa ser liberada se o
   `main.py` rodar em outra máquina
 - **Acesso externo** (fora da LAN) não faz parte da demonstração; se
   necessário, um túnel (ex.: Cloudflare Tunnel) expõe o dashboard sem

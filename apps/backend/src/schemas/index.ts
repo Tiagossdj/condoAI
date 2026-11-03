@@ -68,6 +68,8 @@ export const StatusPayloadSchema = z.object({
   estado: z.enum(['online', 'offline']),
   modelo: z.string(),
   fps: z.number().min(0).nullable(),
+  // Início da sessão de monitoramento; opcional para aceitar status retidos antigos
+  online_desde: z.iso.datetime({ offset: true }).nullable().optional(),
 })
 
 export type StatusPayload = z.infer<typeof StatusPayloadSchema>

@@ -467,11 +467,17 @@ monitorando. O `main.py` publica o estado da câmera em
   "timestamp": "2026-10-08T14:32:00.000Z",
   "estado": "online",
   "modelo": "v2",
-  "fps": 31.6
+  "fps": 31.6,
+  "online_desde": "2026-10-08T14:20:05.112Z"
 }
 ```
 
 - `estado: "online"` ao iniciar e a cada **10 s** enquanto o loop roda
+- `online_desde`: início da sessão de monitoramento (início do processo
+  `main.py`; a reconexão ao broker não o reinicia, pois o estado das
+  ocorrências continua em memória); `null` no `offline`. Ocorrências
+  anteriores a ele não geram alerta (7.3). Opcional no backend, para
+  aceitar status retidos de versões anteriores
 - `estado: "offline"` ao encerrar normalmente (fim do vídeo, `q`, Ctrl+C)
 - **Last Will:** ao conectar, o `main.py` registra no broker uma mensagem
   `offline` (com `fps: null`). Se o processo cair ou a rede cair, o
@@ -805,20 +811,27 @@ parar de ler.
 segundos, padrão `60`):
 
 1. Seleciona as ocorrências **abertas** (3.1) de câmeras com
-   `tipo_area = 'zona_proibida'`, `ativo = TRUE` e estado `online` no
-   sinal de vida (4.7, estado em memória da 7.2). Com a câmera offline
-   não se sabe se o resíduo continua no local
-2. Considera só a ocorrência mais recente de cada par (câmera, classe):
+   `tipo_area = 'zona_proibida'`, `ativo = TRUE` e câmera online: último
+   sinal de vida `online` recebido há menos de 30 s (4.7, estado em
+   memória da 7.2; mesma regra do `CameraStatus`, 8.2). Com a câmera
+   offline não se sabe se o resíduo continua no local
+2. Só ocorrências da **sessão de monitoramento atual**: `timestamp >=
+   online_desde` (4.7). Uma ocorrência de antes da sessão (o `main.py`
+   foi reiniciado, ou ela é anterior à existência do fim, como as da
+   demonstração em campo) não é acompanhada pelo `main.py`, que não guarda
+   estado entre execuções; sem `online_desde`, a câmera não gera alertas
+3. Considera só a ocorrência mais recente de cada par (câmera, classe),
+   **contando as já encerradas**, e alerta apenas se essa estiver aberta:
    uma ocorrência que ficou aberta porque o `main.py` caiu (4.4, passo 5)
-   não gera alerta
-3. Limites em `ALERTA_LIMITES_S` (segundos, crescentes; padrão
+   não gera alerta, nem depois que a ocorrência seguinte do par termina
+4. Limites em `ALERTA_LIMITES_S` (segundos, crescentes; padrão
    `600,2400,7200`, ou seja, 10 min, 40 min e 2 h). Se o tempo de
    permanência (`NOW() - timestamp`) passou de
    `limites[alertas_enviados]`, envia um alerta e grava em
    `alertas_enviados` a quantidade de limites já ultrapassados. Se vários
    limites passaram de uma vez (ex.: backend fora do ar), envia **um**
    alerta só
-4. Esgotados os limites, a ocorrência não gera mais alertas. Falha no
+5. Esgotados os limites, a ocorrência não gera mais alertas. Falha no
    envio (ntfy fora) não incrementa o contador: o próximo ciclo tenta
    de novo
 
@@ -831,7 +844,29 @@ segundos, padrão `60`):
 - Prioridade sobe a cada limite (padrão → alta → urgente)
 - Botão de ação HTTP **"Resolvido"**: `POST
   <BACKEND_URL_LAN>/deteccoes/<id>/resolver`, disparado pelo próprio
-  celular pela rede local (7.1)
+  celular pela rede local (7.1), com `Content-Type: application/json` e
+  corpo `{}` explícitos (o Fastify recusa Content-Type JSON com corpo
+  vazio) e `clear: true` (a notificação some quando a resolução dá certo)
+- **Uma notificação por ocorrência:** todos os alertas da ocorrência levam
+  `sequence_id = ocorrencia-<id>`; no celular, cada alerta substitui o
+  anterior em vez de se acumular
+
+**Confirmação ao gestor:** na **primeira** chamada de
+`POST /deteccoes/:id/resolver` (as seguintes não publicam de novo), o
+backend publica no mesmo `sequence_id`, substituindo o alerta:
+
+- Título: `condoAI · resolvido`
+- Texto: ex. `✔ garrafa_pet em corredor_A resolvida às 01:41 (2 min após
+  a detecção)` (hora no fuso `America/Sao_Paulo`)
+- Prioridade baixa (2), sem botão
+
+**Desativação:** sem `NTFY_URL` ou `BACKEND_URL_LAN` (ou com limites
+inválidos), o agendador não é iniciado e o backend sobe normalmente, com
+um aviso no log (RNF08).
+
+**Servidor ntfy** (2.4): `binwiederhier/ntfy:v2`, comando `serve`, sem
+`upstream-base-url` (não depende de internet) e com cache de mensagens em
+volume: o celular que perder o Wi-Fi recebe os alertas ao reconectar.
 
 **Variáveis de ambiente** (`apps/backend/.env`):
 
@@ -859,6 +894,10 @@ demonstração é Android.
   "a classe continua presente na área". Um falso positivo fixo geraria
   alertas; a área monitorada (4.8) reduz esse risco, e o botão
   "Resolvido" encerra os alertas da ocorrência
+- O fim só é publicado após `--ausencia` segundos sem ver a classe (4.4):
+  um limite que vença nessa janela gera alerta para um resíduo que já
+  saiu. Com os limites padrão (10 min, 40 min, 2 h) e a ausência de 30 s,
+  o caso é raro; com limites de teste, aparece (T32)
 - Sem autenticação (2.3): quem estiver na rede local pode assinar o
   tópico ou chamar a rota de resolução
 - A infraestrutura continua em um único notebook (seção 11); o alerta

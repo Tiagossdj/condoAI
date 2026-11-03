@@ -60,11 +60,12 @@ function toDeteccao(row: DeteccaoRow) {
   }
 }
 
-// Idempotente: COALESCE mantém a primeira confirmação (spec 7.1)
+// Idempotente: COALESCE mantém a primeira confirmação (spec 7.1). NOW() é o
+// início da transação: igual ao valor gravado só quando a confirmação é desta chamada
 const RESOLVER = `
   UPDATE deteccoes SET resolvido_em = COALESCE(resolvido_em, NOW())
   WHERE id = $1
-  RETURNING id
+  RETURNING id, resolvido_em = NOW() AS primeira
 `
 
 export default async function deteccoesRoutes(fastify: FastifyInstance) {
@@ -165,8 +166,9 @@ export default async function deteccoesRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params
 
-      const atualizada = await fastify.db.query(RESOLVER, [id])
-      if (atualizada.rowCount === 0) {
+      const atualizada = await fastify.db.query<{ id: number; primeira: boolean }>(RESOLVER, [id])
+      const marcada = atualizada.rows[0]
+      if (!marcada) {
         return reply.code(404).send({ error: 'detecção não encontrada' })
       }
 
@@ -174,8 +176,19 @@ export default async function deteccoesRoutes(fastify: FastifyInstance) {
         `${SELECT_DETECCAO} WHERE d.id = $1`,
         [id],
       )
-      request.log.info({ id }, 'ocorrência resolvida pelo gestor')
-      return toDeteccao(result.rows[0]!)
+      const row = result.rows[0]!
+      if (marcada.primeira) {
+        request.log.info({ id }, 'ocorrência resolvida pelo gestor')
+        // Retorno ao gestor no celular (spec 7.3); só na primeira confirmação
+        await fastify.confirmarResolucao({
+          id,
+          classe: row.classe_nome,
+          localizacao: row.localizacao,
+          timestamp: row.timestamp,
+          resolvidoEm: row.resolvido_em!,
+        })
+      }
+      return toDeteccao(row)
     },
   )
 }

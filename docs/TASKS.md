@@ -396,7 +396,7 @@
     limpeza sem deixar linhas. `tsc` sem erros. POST com `Content-Type: application/json`
     e corpo vazio → 400 `FST_ERR_CTP_EMPTY_JSON_BODY` (verificar o botão do ntfy na T32)
 
-- [ ] **T32** — Agendador de alertas e servidor ntfy
+- [x] **T32** — Agendador de alertas e servidor ntfy
   - Dependência: T31 concluída
   - `docker-compose.yml`: serviço `ntfy` na porta `8080` (spec 2.4)
   - Backend: agendador (spec 7.3) com limites e intervalo por variável de
@@ -408,6 +408,26 @@
     no alerta grava `resolvido_em` e interrompe os alertas; câmera
     `ponto_coleta` e câmera offline não geram alerta; Android sem internet
     recebe o alerta pela rede local
+  - **Ajustes durante a tarefa** (aprovados): `online_desde` no sinal de vida (spec 4.7)
+    e só ocorrências da sessão atual alertam (spec 7.3), porque as 7 ocorrências da
+    demonstração de 9/10, sem fim, gerariam alertas falsos de 25 dias; `sequence_id` por
+    ocorrência e confirmação "✔ … resolvida" no primeiro "Resolvido", porque no 1º teste
+    com o celular o gestor clicou 10 vezes sem retorno e as notificações se acumulavam
+  - **Resultado:** `test:alertas` 3/3 (limites 2, 4, 6 s): 3 alertas por ocorrência, um por
+    limite, prioridades 3/4/5, sem anexo, mesmo `sequence_id`; botão "Resolvido" (mesma
+    requisição do ntfy, clicado 2×) grava `resolvido_em`, publica 1 confirmação e
+    interrompe os alertas; não alertam: encerrada, câmera offline, `ponto_coleta`, órfã
+    com sucessora encerrada e ocorrência anterior à sessão. Smoke 5/5 com alertas
+    desativados e ativados; `tsc` sem erros. Celular Android (dados móveis desligados,
+    Wi-Fi local, limites 10, 40, 120 s, trecho do `corredor_a.mp4` como `cam_corredor_a`):
+    1º teste: alertas de 10 s, 40 s e 2 min recebidos; "Resolvido" → 200 e `resolvido_em`;
+    nenhum alerta falso das ocorrências de 9/10. 2º teste (id 212): alerta de 10 s →
+    "Resolvido" 41 s após a detecção → notificação substituída por "✔ garrafa_pet em
+    corredor_A resolvida às 01:54 (40 s após a detecção)"; alertas de 40 s e 2 min não
+    enviados. Firewall: removidas as regras de bloqueio do `node.exe` e do Docker Desktop
+    Backend, que barravam 3001 e 8080 mesmo com a regra de liberação (bloqueio prevalece).
+    Limitação observada: o papelão (id 198) recebeu o alerta de 40 s depois de sair, pois o
+    fim só chega após `--ausencia` (spec 7.3). Ocorrências dos testes mantidas no banco
 
 - [ ] **T33** — Demonstração em campo do ciclo completo
   - Dependência: T32 concluída

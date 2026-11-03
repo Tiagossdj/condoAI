@@ -53,9 +53,15 @@ type InsertRow = {
 // Último sinal de vida de cada câmera, só em memória (spec 4.7 e 7.2)
 type StatusCamera = { payload: StatusPayload; recebidoEm: number }
 
+// Mesma regra do CameraStatus no dashboard (spec 8.2): offline após 30 s sem sinal
+const SINAL_MAX_MS = 30_000
+
 declare module 'fastify' {
   interface FastifyInstance {
     publishDeteccao: (payload: MqttPayload) => Promise<boolean>
+    // Início da sessão de monitoramento da câmera, ou null se ela não está
+    // monitorando agora (último status "online" há menos de 30 s) (spec 7.3)
+    cameraOnlineDesde: (cameraId: string) => Date | null
   }
 }
 
@@ -146,6 +152,13 @@ export default fp(
     }
 
     fastify.addSnapshot('status', () => [...statusCameras.values()].map(statusEvento))
+
+    fastify.decorate('cameraOnlineDesde', (cameraId: string) => {
+      const status = statusCameras.get(cameraId)
+      if (status?.payload.estado !== 'online' || Date.now() - status.recebidoEm >= SINAL_MAX_MS) return null
+      // Sem online_desde (main.py anterior à T32) não há como separar sessões: sem alerta
+      return status.payload.online_desde ? new Date(status.payload.online_desde) : null
+    })
 
     async function handleMessage(message: Buffer) {
       const json = parseJson(message)

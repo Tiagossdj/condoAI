@@ -202,7 +202,7 @@ Encerrada e resolvida podem coexistir. O schema completo está em [`apps/backend
 ## Estrutura do projeto
 
 ```
-convoAI/
+condoAI/
 ├── apps/
 │   ├── inference/                 # Python
 │   │   ├── main.py                # Loop contínuo: câmera → ocorrências → MQTT
@@ -258,11 +258,11 @@ Você vai precisar de **quatro terminais**, um para cada serviço. Todos partem 
 ### 1. Clonar
 
 ```bash
-git clone https://github.com/Tiagossdj/convoAI.git
-cd convoAI
+git clone https://github.com/Tiagossdj/condoAI.git
+cd condoAI
 ```
 
-> **No Windows, clone em um caminho curto** (ex.: `C:\dev\convoAI`). O PyTorch tem arquivos com nomes muito longos e a instalação falha em pastas profundas. Veja [Problemas comuns](#problemas-comuns).
+> **No Windows, clone em um caminho curto** (ex.: `C:\dev\condoAI`). O PyTorch tem arquivos com nomes muito longos e a instalação falha em pastas profundas. Veja [Problemas comuns](#problemas-comuns).
 
 Os pesos do modelo (`apps/inference/models/v2/best.pt`, cerca de 6 MB) **já vêm no clone**. Não é preciso baixar nem treinar nada.
 
@@ -1013,7 +1013,7 @@ A H2 foi medida com GTX 1650 (CUDA 11.8) em `localhost`, do `/scan` até o event
 
 | Sintoma | Causa | Solução |
 |---|---|---|
-| `pip` cita *Windows Long Path* ou `DLL load failed` ao importar o torch | Pasta do projeto em um caminho longo demais | Clone em um caminho curto (`C:\dev\convoAI`), apague o `.venv` e reinstale, ou [ative os caminhos longos](https://pip.pypa.io/warnings/enable-long-paths) |
+| `pip` cita *Windows Long Path* ou `DLL load failed` ao importar o torch | Pasta do projeto em um caminho longo demais | Clone em um caminho curto (`C:\dev\condoAI`), apague o `.venv` e reinstale, ou [ative os caminhos longos](https://pip.pypa.io/warnings/enable-long-paths) |
 | `Bind for 0.0.0.0:5432 failed` ao subir o Docker | Outro serviço usa a porta | Pare o PostgreSQL local ou outros containers. Vale também para `1883`, `9001` e `8080` |
 | `EADDRINUSE` no backend ou no frontend | Instância anterior ainda no ar | Encerre o processo que usa `3001` ou `3000` |
 | Backend não sobe e cita `ECONNREFUSED` ou senha do banco | Docker parado, ou senhas diferentes nos dois `.env` | Rode `docker compose ps` e compare os arquivos |

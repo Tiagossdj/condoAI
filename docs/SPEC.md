@@ -616,8 +616,10 @@ ultralytics gera os artefatos em `runs/detect/<versão>/`:
 Ao final, `train.py` copia esses quatro arquivos para
 `apps/inference/models/<versão>/`. Cada versão guarda também um
 `metricas.md` com dataset, hiperparâmetros e métricas no teste, para
-comparação entre versões no TCC. `best.pt` fica no `.gitignore`; os demais
-artefatos são versionados.
+comparação entre versões no TCC. Esses artefatos são versionados. Dos pesos,
+só o `best.pt` da versão em produção (`v2`) é versionado, para quem clonar o
+repositório executar o sistema sem treinar; os das demais versões ficam no
+`.gitignore`.
 
 O serviço de inferência carrega `models/<MODEL_VERSION>/best.pt`
 (`MODEL_VERSION` em `config.py`, sobrescrevível por variável de ambiente).

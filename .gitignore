@@ -156,6 +156,8 @@ venv/
 
 # YOLOv8 / ultralytics
 *.pt
+# Exceção: pesos da versão em produção, para rodar sem treinar (spec 6.4)
+!apps/inference/models/v2/best.pt
 runs/
 
 # Vídeos gravados com main.py --gravar (podem conter pessoas; spec 5)
